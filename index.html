@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Itinerario: Austin a Medellín</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto+Mono:wght@700&display=swap');
+
+        /* --- Estilos Generales --- */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #1c2a39;
+        }
+        
+        h1 {
+            font-size: 2.2em;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin: 40px 0 20px;
+            color: #007bff;
+        }
+
+        /* --- ESTILO DE CONTADOR (LADO A LADO) --- */
+        .countdown-container {
+            display: flex;
+            flex-direction: row; /* Cambiado para estar lado a lado */
+            flex-wrap: wrap; /* Permite que se apilen en pantallas pequeñas */
+            justify-content: space-around;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .countdown-card {
+            background: #1d2b38;
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            flex: 1; /* Permite que compartan el espacio */
+            min-width: 280px; /* Ancho mínimo antes de apilarse */
+        }
+
+        .countdown-card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 400;
+            color: #00aaff;
+        }
+
+        .timer {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .time-block {
+            display: flex;
+            flex-direction: column;
+            min-width: 60px;
+        }
+
+        .time-block span:first-child {
+            font-size: 2.4em;
+            font-weight: 700;
+            color: #f0f2f5;
+            line-height: 1;
+        }
+
+        .time-block span:last-child {
+            font-size: 0.75em;
+            text-transform: uppercase;
+            color: #9ab;
+        }
+
+        /* --- Estilos de la Línea de Tiempo (EMOJIS MÁS GRANDES) --- */
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 21px; /* Ajustado */
+            height: 100%;
+            width: 4px;
+            background: #e0e0e0;
+        }
+
+        .timeline-item {
+            padding: 10px 40px;
+            position: relative;
+            margin-left: 25px; /* Ajustado */
+            margin-bottom: 20px;
+        }
+        
+        .timeline-item::before {
+            content: attr(data-icon);
+            position: absolute;
+            left: -21px; /* Ajustado para el nuevo tamaño (42px / 2) */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 42px; /* Aumentado */
+            height: 42px; /* Aumentado */
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid #007bff;
+            text-align: center;
+            line-height: 42px; /* Aumentado */
+            font-size: 1.8em; /* Aumentado */
+        }
+
+        .item-content {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .item-date {
+            font-weight: 600;
+            color: #007bff;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .item-description {
+            margin: 0;
+            line-height: 1.6;
+        }
+        
+        .tbd {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        /* --- Estilos de las Tarjetas de Información --- */
+        .info-card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .info-card h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .info-card ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🤠 De Austin a Medellín 🇨🇴</h1>
+
+        <div class="countdown-container">
+            <div class="countdown-card">
+                <h3>Nathan llega en:</h3>
+                <div class="timer" id="countdown-nathan">
+                    <div class="time-block"><span id="nathan-days">0</span><span>Días</span></div>
+                    <div class="time-block"><span id="nathan-hours">0</span><span>Hrs</span></div>
+                    <div class="time-block"><span id="nathan-minutes">0</span><span>Min</span></div>
+                </div>
+            </div>
+            <div class="countdown-card">
+                <h3>Anyela y Ron llegan en:</h3>
+                <div class="timer" id="countdown-ron-anyela">
+                    <div class="time-block"><span id="ron-anyela-days">0</span><span>Días</span></div>
+                    <div class="time-block"><span id="ron-anyela-hours">0</span><span>Hrs</span></div>
+                    <div class="time-block"><span id="ron-anyela-minutes">0</span><span>Min</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="timeline">
+            <h2>Diciembre 2025</h2>
+            <div class="timeline-item" data-icon="🛬"><div class="item-content"><div class="item-date">Sábado, 13 de Dic</div><p class="item-description"><strong>PM:</strong> Llegada de Nathan a Medellín desde USA.</p></div></div>
+            <div class="timeline-item" data-icon="🏠"><div class="item-content"><div class="item-date">Domingo, 14 de Dic</div><p class="item-description">Primer día en Medellín. Descanso y actividades.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Lunes, 15 de Dic</div><p class="item-description tbd">Planes por determinar en Medellín.</p></div></div>
+            <div class="timeline-item" data-icon="🚗"><div class="item-content"><div class="item-date">Martes, 16 de Dic</div><p class="item-description"><strong>AM:</strong> Salida de Nathan de Medellín para el Eje Cafetero/Alquiler.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Miércoles, 17 de Dic</div><p class="item-description tbd">Estadía fuera de Medellín. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Jueves, 18 de Dic</div><p class="item-description tbd">Estadía fuera de Medellín. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Viernes, 19 de Dic</div><p class="item-description tbd">Estadía fuera de Medellín. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Sábado, 20 de Dic</div><p class="item-description tbd">Estadía fuera de Medellín. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="🏠"><div class="item-content"><div class="item-date">Domingo, 21 de Dic</div><p class="item-description"><strong>AM:</strong> Regreso de Nathan a Medellín (o donde se determine).</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Lunes, 22 de Dic</div><p class="item-description tbd">Planes por determinar en Medellín.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Martes, 23 de Dic</div><p class="item-description tbd">Planes por determinar en Medellín.</p></div></div>
+            <div class="timeline-item" data-icon="🎄"><div class="item-content"><div class="item-date">Miércoles, 24 de Dic</div><p class="item-description">Celebración de Nochebuena.</p></div></div>
+            <div class="timeline-item" data-icon="🎁"><div class="item-content"><div class="item-date">Jueves, 25 de Dic</div><p class="item-description">Día de Navidad.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Viernes, 26 de Dic</div><p class="item-description tbd">Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Sábado, 27 de Dic</div><p class="item-description tbd">Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Domingo, 28 de Dic</div><p class="item-description tbd">Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Lunes, 29 de Dic</div><p class="item-description tbd">Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Martes, 30 de Dic</div><p class="item-description tbd">Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="🎉"><div class="item-content"><div class="item-date">Miércoles, 31 de Dic</div><p class="item-description">Celebración de Fin de Año.</p></div></div>
+            
+            <h2>Enero 2026</h2>
+            
+            <div class="timeline-item" data-icon="🥂"><div class="item-content"><div class="item-date">Jueves, 1 de Ene</div><p class="item-description">Día de Año Nuevo. Descanso.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Viernes, 2 de Ene</div><p class="item-description tbd">Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="🛬"><div class="item-content"><div class="item-date">Sábado, 3 de Ene</div><p class="item-description"><strong>PM:</strong> Llegada de Ron y Anyela a Medellín desde USA.</p></div></div>
+            <div class="timeline-item" data-icon="📍"><div class="item-content"><div class="item-date">Domingo, 4 de Ene</div><p class="item-description tbd">Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="👨‍👩‍👧‍👦"><div class="item-content"><div class="item-date">Lunes, 5 de Ene</div><p class="item-description">Primer encuentro familiar. Almuerzo (hora por definir).</p></div></div>
+            <div class="timeline-item" data-icon="🏙️"><div class="item-content"><div class="item-date">Martes, 6 de Ene</div><p class="item-description">Tiempo para explorar Medellín.</p></div></div>
+            <div class="timeline-item" data-icon="🏙️"><div class="item-content"><div class="item-date">Miércoles, 7 de Ene</div><p class="item-description">Tiempo para explorar Medellín.</p></div></div>
+            <div class="timeline-item" data-icon="🚌"><div class="item-content"><div class="item-date">Jueves, 8 de Ene</div><p class="item-description"><strong>PM:</strong> Salida en Bus (parte del grupo) para Algeciras.</p></div></div>
+            <div class="timeline-item" data-icon="✈️"><div class="item-content"><div class="item-date">Viernes, 9 de Ene</div><p class="item-description"><strong>AM:</strong> Salida en Vuelo de Medellín a Neiva. Luego, bus hacia Algeciras.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Sábado, 10 de Ene</div><p class="item-description tbd">Día en Algeciras. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Domingo, 11 de Ene</div><p class="item-description tbd">Día en Algeciras. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Lunes, 12 de Ene</div><p class="item-description tbd">Día en Algeciras. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="⛰️"><div class="item-content"><div class="item-date">Martes, 13 de Ene</div><p class="item-description tbd">Día en Algeciras. Planes por determinar.</p></div></div>
+            <div class="timeline-item" data-icon="🚌"><div class="item-content"><div class="item-date">Miércoles, 14 de Ene</div><p class="item-description"><strong>PM:</strong> Regreso en Bus desde Algeciras a Medellín.</p></div></div>
+            <div class="timeline-item" data-icon="🛫"><div class="item-content"><div class="item-date">Jueves, 15 de Ene</div><p class="item-description"><strong>PM:</strong> Salida de Ron, Anyela y Rosita.</p></div></div>
+            <div class="timeline-item" data-icon="🧳"><div class="item-content"><div class="item-date">Viernes, 16 de Ene</div><p class="item-description">Último día. Descanso y empacar.</p></div></div>
+            <div class="timeline-item" data-icon="🛫"><div class="item-content"><div class="item-date">Sábado, 17 de Ene</div><p class="item-description"><strong>AM:</strong> Salida del resto del grupo desde Medellín a USA. Fin del viaje.</p></div></div>
+        </div>
+
+        <div class="info-cards-container">
+            <h2>Información Adicional</h2>
+            <div class="info-card">
+                <h3>📝 Notas Importantes</h3>
+                <ul>
+                    <li><strong>¡PRIVADO!</strong> Maria Helena, Yedinson, y Yazmin ya saben.</li>
+                    <li>Maria Helena, Yedinson, y/o Yazmin no están confirmados.</li>
+                    <li>Faber, Yisela, y Rosita no saben absolutamente nada.</li>
+                </ul>
+            </div>
+            <div class="info-card">
+                <h3>🎲 Actividades Planeadas</h3>
+                <ul>
+                    <li>Bingo</li>
+                    <li>Retratos con la letra V</li>
+                    <li>Scavenger Hunt (Búsqueda del tesoro)</li>
+                    <li>Pictionary</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const nathanArrivalTime = new Date(2025, 11, 13, 22, 30, 0).getTime(); // Mes 11 es Diciembre
+        const ronAnyelaArrivalTime = new Date(2026, 0, 3, 22, 30, 0).getTime(); // Mes 0 es Enero
+
+        function startCountdown(targetTime, idPrefix) {
+            const interval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = targetTime - now;
+
+                if (distance < 0) {
+                    clearInterval(interval);
+                    document.getElementById(`countdown-${idPrefix}`).innerHTML = "<h3 style='margin: auto; color: #00aaff;'>¡Ya están aquí!</h3>";
+                    return;
+                }
+                
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                
+                document.getElementById(`${idPrefix}-days`).innerText = days;
+                document.getElementById(`${idPrefix}-hours`).innerText = hours;
+                document.getElementById(`${idPrefix}-minutes`).innerText = minutes;
+            }, 1000);
+        }
+        
+        startCountdown(nathanArrivalTime, 'nathan');
+        startCountdown(ronAnyelaArrivalTime, 'ron-anyela');
+    </script>
+
+</body>
+</html>
