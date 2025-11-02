@@ -56,12 +56,20 @@
         @keyframes flash-red { 50% { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4); } }
         .flash-error { animation: flash-red 0.7s ease-out; }
         
-        /* PULSING FIX: Use box-shadow that doesn't change dimensions */
+        /* PULSING STYLES */
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         @keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
 
-        .pulse-overdue { animation: pulse-red 2s infinite; }
-        .pulse-due-soon { animation: pulse-orange 2s infinite; }
+        /* Task Item Pulse - Used for List view and Kanban card */
+        .task-item.pulse-overdue, .kanban-card.pulse-overdue, .calendar-task-item.pulse-overdue { animation: pulse-red 2s infinite; }
+        .task-item.pulse-due-soon, .kanban-card.pulse-due-soon, .calendar-task-item.pulse-due-soon { animation: pulse-orange 2s infinite; }
+        
+        /* Calendar Day Pulse - Used for the entire date box */
+        .calendar-day.pulse-overdue { animation: pulse-red 2s infinite; }
+        .calendar-day.pulse-due-soon { animation: pulse-orange 2s infinite; }
+        
+        /* Ensure dots don't pulse to avoid conflict with the box pulse */
+        .task-dot.pulse-overdue, .task-dot.pulse-due-soon { animation: none !important; box-shadow: none !important; } 
 
         .skeleton { background-color: #e5e7eb; border-radius: 0.5rem; }
         .skeleton-title { width: 60%; height: 20px; margin-bottom: 0.5rem; }
@@ -90,25 +98,79 @@
 
         /* History Modal Specific Styles */
         .history-card { border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #f9fafb; padding: 1rem; }
-        .history-change { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 0.25rem 0; border-bottom: 1px dotted #e5e7eb; }
+        /* UPDATED HISTORY LAYOUT FOR CLARITY */
+        .history-change { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr 1fr; /* Field | Old Value | New Value */
+            align-items: center;
+            font-size: 0.875rem; 
+            padding: 0.25rem 0; 
+            border-bottom: 1px dotted #e5e7eb; 
+        }
         .history-change:last-child { border-bottom: none; }
-        .history-old { color: #ef4444; font-style: italic; }
-        .history-new { color: #10b981; font-weight: 500; }
+        .history-old { color: #ef4444; font-style: italic; text-align: center; }
+        .history-new { color: #10b981; font-weight: 500; text-align: center; }
+        .history-field { font-weight: 600; color: #1f2937; }
         .notes-save-indicator { transition: opacity 0.3s ease-out; }
+        
+        /* New Styles for Graphic/Gantt View */
+        #graphic-view-container { overflow-x: auto; padding-bottom: 1rem; }
+        #gantt-chart-container { position: relative; }
+        #gantt-chart { display: flex; flex-direction: column; min-width: 100%; }
+        .gantt-timeline-header { position: sticky; top: 0; background: #fff; z-index: 10; border-bottom: 1px solid #e5e7eb; }
+        .gantt-day-header { flex-shrink: 0; flex-grow: 0; width: 50px; text-align: center; font-size: 0.75rem; padding: 0.5rem 0; border-left: 1px solid #f3f4f6; }
+        .gantt-day-header.current-day { background-color: #eef2ff; font-weight: 600; }
+        .gantt-task-row { display: flex; align-items: center; border-bottom: 1px solid #f3f4f6; padding: 0.5rem 0; min-height: 40px; }
+        .gantt-task-label { width: 250px; flex-shrink: 0; font-size: 0.875rem; color: #4b5563; font-weight: 500; padding-left: 1rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .gantt-task-bar-area { display: flex; flex-grow: 1; align-items: center; height: 100%; position: relative; }
+        .gantt-task-bar { height: 18px; border-radius: 4px; position: absolute; top: 50%; transform: translateY(-50%); opacity: 0.8; transition: opacity 0.2s, box-shadow 0.2s; cursor: pointer; z-index: 5; font-size: 0.75rem; color: white; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; padding: 0 4px; }
+        .gantt-task-bar:hover { opacity: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .gantt-bar-color-Personal { background-color: #3b82f6; }
+        .gantt-bar-color-Work { background-color: #8b5cf6; }
+        .gantt-bar-color-School { background-color: #10b981; }
+        .gantt-bar-color-Other { background-color: #6b7280; }
+        .gantt-view-controls { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; border-bottom: 1px solid #e5e7eb; }
+        
+        /* Gantt Time Line Styles */
+        #current-time-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #ef4444; 
+            z-index: 20;
+            opacity: 0.7;
+            pointer-events: none;
+            /* Ensures time line scrolls with the chart */
+            transform: translateX(0); 
+        }
     </style>
 </head>
 <body class="antialiased">
 
     <div id="loader" class="loader"></div>
     <div id="calendar-tooltip" class="hidden"></div>
+    
+    <div id="welcome-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-sm w-full text-center">
+            <h3 id="welcome-title" class="text-2xl font-bold mb-3 text-indigo-600"></h3>
+            <p id="welcome-message" class="text-gray-700 mb-6"></p>
+            <button id="welcome-modal-close-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Got It! Start Planning</button>
+        </div>
+    </div>
     <div id="app-indicator" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm py-2 px-4 rounded-full shadow-lg flex items-center gap-2 z-50">
         <svg id="indicator-spinner" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
         <span id="indicator-text">Saving...</span>
     </div>
+    
+    <div id="notification-banner" class="hidden fixed top-5 left-1/2 -translate-x-1/2 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg shadow-lg z-50 animate-fade-in flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1"></path></svg>
+        <span id="notification-text">Reminder set!</span>
+    </div>
 
-    <div id="add-task-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal"><div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full"><h3 class="text-2xl font-bold mb-6 text-gray-800">Add New Task</h3><form id="add-task-form" class="space-y-4"><div class="relative"><input type="text" id="add-task-text" placeholder="What do you need to do?" class="w-full bg-gray-100 rounded-lg pl-4 pr-12 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required><button type="button" id="generate-subtasks-btn" title="✨ Generate Subtasks with AI" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-gray-500 hover:bg-indigo-100 hover:text-indigo-600 transition-colors"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m1-9l2.293-2.293a1 1 0 011.414 0l.707.707a1 1 0 010 1.414L12.707 10l-1.414 1.414a1 1 0 01-1.414 0L7.586 9.121a1 1 0 010-1.414L8.293 7a1 1 0 011.414 0L12 9.293l2.293-2.293a1 1 0 011.414 0l.707.707a1 1 0 010 1.414L13.414 12l1.414 1.414a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414 0L12 13.414l-2.293 2.293a1 1 0 01-1.414 0l-.707-.707a1 1 0 010-1.414L10.586 12 9.172 10.586a1 1 0 010-1.414l.707-.707a1 1 0 011.414 0L12 8.586z" /></svg></button></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><input type="date" id="add-task-date" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required><input type="time" id="add-task-time" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><select id="add-task-priority" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="low">Low Priority</option><option value="medium" selected>Medium Priority</option><option value="high">High Priority</option></select><select id="add-task-category" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="Personal">Personal</option><option value="Work">Work</option><option value="School">School</option><option value="Other">Other</option></select></div><div><label for="add-task-tags" class="block mb-2 text-sm font-medium text-gray-600">Tags (comma separated)</label><input type="text" id="add-task-tags" placeholder="#urgent, #project-x" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><select id="add-task-repeat" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="none">Does not repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select><div><label for="add-task-reminder" class="block mb-1 text-sm font-medium text-gray-600">Reminder</label><select id="add-task-reminder" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="none">No reminder</option><option value="5">5 minutes before</option><option value="15">15 minutes before</option><option value="60">1 hour before</option></select><div id="add-email-toggle-container" class="hidden mt-2 pl-2"><label class="flex items-center space-x-2"><input type="checkbox" id="add-task-email-toggle" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"><span class="text-sm text-gray-600">Also send an email reminder?</span></label></div></div></div><div id="generated-subtasks-container" class="hidden space-y-2 pt-2 max-h-32 overflow-y-auto"><h4 class="text-sm font-bold text-gray-600">✨ AI Generated Subtasks:</h4><ul id="generated-subtasks-list" class="space-y-1 text-sm text-gray-700"></ul></div><div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-add-task-btn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-6 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Add Task</button></div></form></div></div>
-    <div id="edit-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal"><div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full"><h3 class="text-2xl font-bold mb-6 text-gray-800">Edit Task</h3><form id="edit-task-form" class="space-y-4"><input type="text" id="edit-task-text" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><select id="edit-task-priority" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="low">Low</option> <option value="medium">Medium</option> <option value="high">High</option></select><select id="edit-task-category" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="Personal">Personal</option> <option value="Work">Work</option> <option value="School">School</option> <option value="Other">Other</option></select></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><input type="date" id="edit-task-date" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required><input type="time" id="edit-task-time" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"></div><div><label for="edit-task-tags" class="block mb-2 text-sm font-medium text-gray-600">Tags (comma separated)</label><input type="text" id="edit-task-tags" placeholder="#urgent, #project-x" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"></div><textarea id="edit-task-notes" placeholder="Add notes..." class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3"></textarea><div class="flex justify-between gap-4 pt-4"><button type="button" id="edit-history-btn" class="hidden bg-gray-100 hover:bg-gray-200 text-sm font-bold py-2 px-4 rounded-lg flex items-center gap-1"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Edit History</button><div class="flex gap-4"><button type="button" id="cancel-edit-btn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-6 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Save Changes</button></div></div></form></div></div>
-    <div id="confirm-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal"><div id="confirm-modal-content" class="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center"><h3 class="text-xl font-bold mb-4">Confirm Deletion</h3><p id="confirm-modal-text" class="text-gray-600 mb-6">This action cannot be undone.</p><div class="flex justify-center gap-4"><button id="cancel-delete-btn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-6 rounded-lg">Cancel</button><button id="confirm-delete-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg">Delete</button></div></div></div>
+    <div id="add-task-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal"><div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full"><h3 class="text-2xl font-bold mb-6 text-gray-800">Add New Task</h3><form id="add-task-form" class="space-y-4"><div class="relative"><input type="text" id="add-task-text" placeholder="What do you need to do?" class="w-full bg-gray-100 rounded-lg pl-4 pr-12 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="flex flex-col"><label for="add-task-date" class="mb-1 text-sm font-medium text-gray-600">Due By Date</label><input type="date" id="add-task-date" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="flex flex-col"><label for="add-task-start-time" class="mb-1 text-sm font-medium text-gray-600">Start Time (Optional)</label><input type="time" id="add-task-start-time" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Start Time (Optional)"></div><div class="flex flex-col"><label for="add-task-end-time" class="mb-1 text-sm font-medium text-gray-600">End Time (Optional)</label><input type="time" id="add-task-end-time" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="End Time (Optional)"></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="flex flex-col"><label for="add-task-priority" class="mb-1 text-sm font-medium text-gray-600">Priority</label><select id="add-task-priority" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="low">Low Priority</option><option value="medium" selected>Medium Priority</option><option value="high">High Priority</option></select></div><div class="flex flex-col"><label for="add-task-category" class="mb-1 text-sm font-medium text-gray-600">Category</label><select id="add-task-category" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="Personal">Personal</option><option value="Work">Work</option><option value="School">School</option><option value="Other">Other</option></select></div></div><div><label for="add-task-tags" class="block mb-2 text-sm font-medium text-gray-600">Tags (comma separated)</label><input type="text" id="add-task-tags" placeholder="#urgent, #project-x" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"></div><div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-add-task-btn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-6 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Add Task</button></div></form></div></div>
+    <div id="edit-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal"><div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full"><h3 class="text-2xl font-bold mb-6 text-gray-800">Edit Task</h3><form id="edit-task-form" class="space-y-4"><input type="text" id="edit-task-text" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><select id="edit-task-priority" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="low">Low</option> <option value="medium">Medium</option> <option value="high">High</option></select><select id="edit-task-category" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="Personal">Personal</option> <option value="Work">Work</option><option value="School">School</option> <option value="Other">Other</option></select></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><label for="edit-task-date" class="block mb-1 text-sm font-medium text-gray-600">Due By Date</label><input type="date" id="edit-task-date" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" required></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><label for="edit-task-start-time" class="block mb-1 text-sm font-medium text-gray-600">Start Time (Optional)</label><input type="time" id="edit-task-start-time" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Start Time (Optional)"><label for="edit-task-end-time" class="block mb-1 text-sm font-medium text-gray-600">End Time (Optional)</label><input type="time" id="edit-task-end-time" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="End Time (Optional)"></div><div><label for="edit-task-tags" class="block mb-2 text-sm font-medium text-gray-600">Tags (comma separated)</label><input type="text" id="edit-task-tags" placeholder="#urgent, #project-x" class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500"></div><textarea id="edit-task-notes" placeholder="Add notes..." class="w-full bg-gray-100 rounded-lg px-4 py-3 border focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3"></textarea><div class="flex justify-between gap-4 pt-4"><button type="button" id="edit-history-btn" class="hidden bg-gray-100 hover:bg-gray-200 text-sm font-bold py-2 px-4 rounded-lg flex items-center gap-1"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Edit History</button><div class="flex gap-4"><button type="button" id="cancel-edit-btn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-6 rounded-lg">Cancel</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Save Changes</button></div></div></form></div></div>
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-60 p-4 modal"><div id="confirm-modal-content" class="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center"><h3 class="text-xl font-bold mb-4">Confirm Deletion</h3><p id="confirm-modal-text" class="text-gray-600 mb-6">This action cannot be undone.</p><div class="flex justify-center gap-4"><button id="cancel-delete-btn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-6 rounded-lg">Cancel</button><button id="confirm-delete-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg">Delete</button></div></div></div>
     <div id="calendar-day-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal"><div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-md w-full"><h3 id="calendar-modal-title" class="text-xl font-bold mb-4 text-gray-800"></h3><div id="calendar-modal-tasks" class="space-y-2 max-h-80 overflow-y-auto"></div><div class="text-right mt-6"><button id="calendar-modal-close-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Close</button></div></div></div>
     <div id="history-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 modal">
         <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full">
@@ -142,7 +204,7 @@
                     </div>
                 </div>
                 <button id="header-today-btn" title="Today's Tasks" class="relative bg-white hover:bg-gray-100 text-gray-600 p-2 rounded-full transition-colors duration-200 shadow-sm border"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></button>
-                <button id="header-stats-btn" title="Productivity Stats" class="bg-white hover:bg-gray-100 text-gray-600 p-2 rounded-full transition-colors duration-200 shadow-sm border"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg></button>
+                <button id="header-stats-btn" title="Productivity Stats" class="bg-white hover:bg-gray-100 text-gray-600 p-2 rounded-full transition-colors duration-200 shadow-sm border"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.001 0 0120.488 9z"></path></svg></button>
                 <button id="header-settings-btn" title="Settings" class="bg-white hover:bg-gray-100 text-gray-600 p-2 rounded-full transition-colors duration-200 shadow-sm border"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></button>
                 <button id="header-add-task-btn" title="Add New Task" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full transition-colors duration-200 shadow-md"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></button>
                 <button id="header-logout-btn" title="Log Out" class="bg-white hover:bg-gray-100 text-gray-600 p-2 rounded-full transition-colors duration-200 shadow-sm border"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
@@ -155,11 +217,11 @@
                         <button id="confirm-logout-btn" class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-lg">Yes, Log Out</button>
                     </div>
                 </div>
-            </div>
 
-            <div id="today-panel" class="hidden absolute top-20 right-8 md:right-32 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 animate-fade-in">
-                <div class="p-4 border-b flex justify-between items-center font-semibold">Today's Agenda <button id="today-panel-close-btn" class="text-gray-400 hover:text-gray-600">&times;</button></div>
-                <div id="today-panel-content" class="max-h-96 overflow-y-auto"></div>
+                <div id="today-panel" class="hidden absolute top-20 right-8 md:right-32 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 animate-fade-in">
+                    <div class="p-4 border-b flex justify-between items-center font-semibold">Today's Agenda <button id="today-panel-close-btn" class="text-gray-400 hover:text-gray-600">&times;</button></div>
+                    <div id="today-panel-content" class="max-h-96 overflow-y-auto"></div>
+                </div>
             </div>
         </header>
 
@@ -177,6 +239,7 @@
                 <button id="view-list-btn" class="flex-1 px-4 py-2 text-sm font-semibold rounded-md bg-indigo-600 text-white">List</button>
                 <button id="view-board-btn" class="flex-1 px-4 py-2 text-sm font-semibold rounded-md text-gray-600 hover:bg-gray-200">Board</button>
                 <button id="view-calendar-btn" class="flex-1 px-4 py-2 text-sm font-semibold rounded-md text-gray-600 hover:bg-gray-200">Calendar</button>
+                <button id="view-graphic-btn" class="flex-1 px-4 py-2 text-sm font-semibold rounded-md text-gray-600 hover:bg-gray-200">Graphic</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="relative"><input type="text" id="searchInput" placeholder="Search tasks or #tags..." class="w-full bg-gray-100 rounded-lg px-4 py-2 border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"><span id="search-results-counter" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500"></span></div>
@@ -198,20 +261,57 @@
                 <div id="calendar-grid"></div>
             </div>
         </div>
+
+        <div id="graphic-view-container" class="hidden">
+            <div class="bg-white p-6 rounded-2xl shadow-xl space-y-4">
+                <div class="gantt-view-controls">
+                    <div class="flex items-center gap-2">
+                        <button id="gantt-prev-btn" class="p-2 rounded-full hover:bg-gray-100">&lt;</button>
+                        <h2 id="gantt-title" class="text-xl font-bold"></h2>
+                        <button id="gantt-next-btn" class="p-2 rounded-full hover:bg-gray-100">&gt;</button>
+                    </div>
+                    <div>
+                        <button id="gantt-view-day-btn" class="px-3 py-1 text-sm font-medium rounded-full bg-indigo-600 text-white">Day</button>
+                        <button id="gantt-view-week-btn" class="px-3 py-1 text-sm font-medium rounded-full bg-gray-200 text-gray-800 hover:bg-gray-300">Week</button>
+                    </div>
+                </div>
+                <div id="gantt-chart-container" class="overflow-x-auto">
+                    <div id="gantt-chart">
+                        </div>
+                </div>
+                <div id="gantt-no-tasks-message" class="hidden text-center text-gray-500 py-10">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No scheduled tasks for this period.</h3>
+                    <p class="mt-1 text-sm text-gray-500">Add tasks with a date and time to see them here.</p>
+                </div>
+            </div>
+        </div>
         
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, doc, updateDoc, deleteDoc, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, doc, updateDoc, deleteDoc, arrayRemove, arrayUnion, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-        const firebaseConfig = { apiKey: "AIzaSyA_LRcHCkClvlHeqDPTSKfGa5gY2uiuZ5E", authDomain: "mi-planificador-privado.firebaseapp.com", projectId: "mi-planificador-privado", storageBucket: "mi-planificador-privado.firebasestorage.app", messagingSenderId: "792700686473", appId: "1:792700686473:web:8d1f41076f12fa0103f658" };
+        // 🚨 FIREBASE CONFIGURATION (Using the credentials you provided)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_LRcHCkClvlHeqDPTSKfGa5gY2uiuZ5E",
+            authDomain: "mi-planificador-privado.firebaseapp.com",
+            projectId: "mi-planificador-privado",
+            storageBucket: "mi-planificador-privado.firebasestorage.app",
+            messagingSenderId: "792700686473",
+            appId: "1:792700686473:web:8d1f41076f12fa0103f658",
+            measurementId: "G-H5V6YERMVP"
+        };
+        
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+        const auth = getAuth(app); 
         const db = getFirestore(app);
 
         let allTasks = [], isInitialLoad = true, unsubscribeTasks, taskToDeleteId = null, taskToEditId = null, timerInterval = null, currentView = 'list', currentSearchTerm = '', currentCategoryFilter = 'All', currentCalendarDate = new Date();
+        let currentGraphicDate = new Date(), graphicView = 'day'; 
+
         const categoryMap = { 'Personal': {color: 'bg-blue-100 text-blue-800', icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`}, 'Work': {color: 'bg-purple-100 text-purple-800', icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>`}, 'School': {color: 'bg-green-100 text-green-800', icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`}, 'Other': {color: 'bg-gray-200 text-gray-800', icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 013 8V5a2 2 0 012-2h2z"></path></svg>`} };
         const categoryActiveMap = { 'Personal': 'bg-blue-500 text-white', 'Work': 'bg-purple-500 text-white', 'School': 'bg-green-500 text-white', 'Other': 'bg-gray-500 text-white' };
         const categoryDotMap = { 'Personal': 'bg-blue-500', 'Work': 'bg-purple-500', 'School': 'bg-green-500', 'Other': 'bg-gray-400' };
@@ -223,14 +323,31 @@
             authError: document.getElementById('auth-error'), loginForm: document.getElementById('login-form'),
             loginSuccessMessage: document.getElementById('login-success-message'), logoutSuccessMessage: document.getElementById('logout-success-message'), taskSuccessMessage: document.getElementById('task-success-message'),
             confirmModal: document.getElementById('confirm-modal'), cancelDeleteBtn: document.getElementById('cancel-delete-btn'), confirmDeleteBtn: document.getElementById('confirm-delete-btn'),
+            
             addTaskModal: document.getElementById('add-task-modal'), addTaskForm: document.getElementById('add-task-form'),
             cancelAddTaskBtn: document.getElementById('cancel-add-task-btn'), addTaskText: document.getElementById('add-task-text'), addTaskDate: document.getElementById('add-task-date'),
-            addTaskTime: document.getElementById('add-task-time'), addTaskCategory: document.getElementById('add-task-category'), addTaskPriority: document.getElementById('add-task-priority'), addTaskTags: document.getElementById('add-task-tags'), addTaskRepeat: document.getElementById('add-task-repeat'), addTaskReminder: document.getElementById('add-task-reminder'), addTaskEmailToggleContainer: document.getElementById('add-email-toggle-container'), addTaskEmailToggle: document.getElementById('add-task-email-toggle'),
+            addTaskStartTime: document.getElementById('add-task-start-time'), 
+            addTaskEndTime: document.getElementById('add-task-end-time'),     
+            addTaskCategory: document.getElementById('add-task-category'), addTaskPriority: document.getElementById('add-task-priority'), addTaskTags: document.getElementById('add-task-tags'), addTaskRepeat: document.getElementById('add-task-repeat'), addTaskReminder: document.getElementById('add-task-reminder'), addTaskEmailToggleContainer: document.getElementById('add-email-toggle-container'), addTaskEmailToggle: document.getElementById('add-task-email-toggle'),
+            
             editModal: document.getElementById('edit-modal'), editTaskForm: document.getElementById('edit-task-form'), cancelEditBtn: document.getElementById('cancel-edit-btn'),
-            editTaskText: document.getElementById('edit-task-text'), editTaskDate: document.getElementById('edit-task-date'), editTaskTime: document.getElementById('edit-task-time'),
+            editTaskText: document.getElementById('edit-task-text'), editTaskDate: document.getElementById('edit-task-date'), 
+            editTaskStartTime: document.getElementById('edit-task-start-time'), 
+            editTaskEndTime: document.getElementById('edit-task-end-time'),     
             editTaskCategory: document.getElementById('edit-task-category'), editTaskPriority: document.getElementById('edit-task-priority'), editTaskNotes: document.getElementById('edit-task-notes'), editTaskTags: document.getElementById('edit-task-tags'),
-            taskListContainer: document.getElementById('task-list-container'), viewListBtn: document.getElementById('view-list-btn'), viewBoardBtn: document.getElementById('view-board-btn'), viewCalendarBtn: document.getElementById('view-calendar-btn'),
+            
+            taskListContainer: document.getElementById('task-list-container'), viewListBtn: document.getElementById('view-list-btn'), viewBoardBtn: document.getElementById('view-board-btn'), viewCalendarBtn: document.getElementById('view-calendar-btn'), viewGraphicBtn: document.getElementById('view-graphic-btn'), 
+
             listViewContainer: document.getElementById('list-view-container'), kanbanViewContainer: document.getElementById('kanban-view-container'), kanbanBoard: document.getElementById('kanban-board'), calendarViewContainer: document.getElementById('calendar-view-container'),
+            graphicViewContainer: document.getElementById('graphic-view-container'), 
+            ganttChart: document.getElementById('gantt-chart'), 
+            ganttTitle: document.getElementById('gantt-title'), 
+            ganttPrevBtn: document.getElementById('gantt-prev-btn'), 
+            ganttNextBtn: document.getElementById('gantt-next-btn'), 
+            ganttViewDayBtn: document.getElementById('gantt-view-day-btn'), 
+            ganttViewWeekBtn: document.getElementById('gantt-view-week-btn'), 
+            ganttNoTasksMessage: document.getElementById('gantt-no-tasks-message'), 
+            
             searchInput: document.getElementById('searchInput'), searchResultsCounter: document.getElementById('search-results-counter'), categoryFilters: document.getElementById('category-filters'),
             calendarGrid: document.getElementById('calendar-grid'), calendarMonthYear: document.getElementById('calendar-month-year'), prevMonthBtn: document.getElementById('prev-month-btn'), nextMonthBtn: document.getElementById('next-month-btn'),
             dashboardNextTask: document.getElementById('dashboard-next-task'), dashboardPendingBreakdown: document.getElementById('dashboard-pending-breakdown'), dashboardOverdue: document.getElementById('dashboard-overdue'), dashboardOverdueCount: document.getElementById('dashboard-overdue-count'),
@@ -247,36 +364,47 @@
             lastSavedTime: document.getElementById('last-saved-time'),
             lastSavedAction: document.getElementById('last-saved-action'),
             
-            // Re-added Calendar Modal Elements
             calendarDayModal: document.getElementById('calendar-day-modal'),
             calendarModalTitle: document.getElementById('calendar-modal-title'),
             calendarModalTasks: document.getElementById('calendar-modal-tasks'),
             calendarModalCloseBtn: document.getElementById('calendar-modal-close-btn'),
 
-            // New History Elements
             historyModal: document.getElementById('history-modal'),
             historyModalContent: document.getElementById('history-modal-content'),
             historyModalCloseBtn: document.getElementById('history-modal-close-btn'),
             editHistoryBtn: document.getElementById('edit-history-btn'),
 
-            // Logout Panel Elements
             logoutPanel: document.getElementById('logout-panel'),
             logoutUserName: document.getElementById('logout-user-name'),
             confirmLogoutBtn: document.getElementById('confirm-logout-btn'),
             cancelLogoutBtn: document.getElementById('cancel-logout-btn'),
 
-            // Danger Zone Modal Content
             confirmModalText: document.getElementById('confirm-modal-text'),
             confirmModalContent: document.getElementById('confirm-modal-content'),
+            
+            notificationBanner: document.getElementById('notification-banner'),
+            notificationText: document.getElementById('notification-text'),
+
+            welcomeModal: document.getElementById('welcome-modal'),
+            welcomeTitle: document.getElementById('welcome-title'),
+            welcomeMessage: document.getElementById('welcome-message'),
+            welcomeModalCloseBtn: document.getElementById('welcome-modal-close-btn'),
+            ganttChartContainer: document.getElementById('gantt-chart-container')
         };
 
         onAuthStateChanged(auth, user => {
             if (user) {
                 DOMElements.authContainer.classList.add('hidden'); DOMElements.plannerContainer.classList.remove('hidden');
-                if (sessionStorage.getItem('loginJustOccurred')) { showFlashMessage(DOMElements.loginSuccessMessage, "Successfully logged in!"); sessionStorage.removeItem('loginJustOccurred'); }
+                
+                // Check for one-time login flag
+                if (sessionStorage.getItem('loginJustOccurred')) { 
+                    // Set flag to false now, but only remove it after data is loaded
+                    // showFlashMessage(DOMElements.loginSuccessMessage, "Successfully logged in!"); 
+                }
+                
                 const emailName = user.email.split('@')[0];
                 DOMElements.userProfileName.textContent = emailName;
-                DOMElements.logoutUserName.textContent = user.email; // For logout confirmation
+                DOMElements.logoutUserName.textContent = user.email; 
                 loadTasks(user.uid); 
                 if (timerInterval) clearInterval(timerInterval);
                 timerInterval = setInterval(updateDynamicElements, 15000);
@@ -285,7 +413,8 @@
                 if(unsubscribeTasks) unsubscribeTasks();
                 if (timerInterval) clearInterval(timerInterval); clearUI();
             }
-            DOMElements.loader.classList.add('hidden');
+            // 💡 FIX: The loader hides once the Auth state is determined (user logged in OR logged out)
+            DOMElements.loader.classList.add('hidden'); 
         });
 
         async function loadTasks(userId) { 
@@ -293,40 +422,80 @@
             refreshDynamicContent(); 
             const tasksCollection = collection(db, "users", userId, "tasks"); 
             if (unsubscribeTasks) unsubscribeTasks(); 
-            unsubscribeTasks = onSnapshot(query(tasksCollection, orderBy("date", "desc")), snapshot => { 
-                // Ensure 'history' property exists on all tasks for safety
-                allTasks = snapshot.docs.map(doc => ({ 
-                    id: doc.id, 
-                    ...doc.data(), 
-                    subtasks: doc.data().subtasks || [], 
-                    notes: doc.data().notes || '',
-                    history: doc.data().history || [] // Initialize history array
-                })); 
-                if (isInitialLoad) { isInitialLoad = false; } refreshDynamicContent(); 
-            }); 
+            unsubscribeTasks = onSnapshot(
+                query(tasksCollection, orderBy("date", "desc")), 
+                snapshot => { 
+                    allTasks = snapshot.docs.map(doc => ({ 
+                        id: doc.id, 
+                        // Add default values for new fields if they don't exist
+                        startTime: doc.data().startTime || '',
+                        endTime: doc.data().endTime || doc.data().time || '', 
+                        ...doc.data(), 
+                        subtasks: doc.data().subtasks || [], 
+                        notes: doc.data().notes || '',
+                        history: doc.data().history || [] 
+                    })); 
+                    if (isInitialLoad) { isInitialLoad = false; } 
+                    
+                    // --- Welcome Message Logic ---
+                    if (sessionStorage.getItem('loginJustOccurred')) {
+                        showWelcomeMessage();
+                        sessionStorage.removeItem('loginJustOccurred');
+                    }
+                    // --- End Welcome Message Logic ---
+
+                    refreshDynamicContent(); 
+                },
+                // 🚨 ADDED ERROR HANDLER FOR DEBUGGING PERMISSION ISSUES
+                error => {
+                    console.error("Firestore Snapshot Error - Permissions Issue Likely:", error);
+                    showIndicator("Error: Failed to load tasks. Check console (likely permission issue).", "warning", false, 10000);
+                }
+            ); 
+        }
+
+        // 🆕 NEW FUNCTION: Show welcome popup after login
+        function showWelcomeMessage() {
+            const userName = auth.currentUser.email.split('@')[0];
+            const pendingTasksCount = allTasks.filter(t => !t.completed).length;
+            
+            DOMElements.welcomeTitle.textContent = `Welcome back, ${userName}!`;
+            if (pendingTasksCount > 0) {
+                DOMElements.welcomeMessage.innerHTML = `You have <strong>${pendingTasksCount}</strong> pending task${pendingTasksCount !== 1 ? 's' : ''} to crush! Let's get planning.`;
+            } else {
+                DOMElements.welcomeMessage.innerHTML = `Your list is clean! Ready to add new tasks?`;
+            }
+
+            DOMElements.welcomeModal.classList.remove('hidden');
         }
         
         // Helper to find differences for history logging
         function getChanges(oldTask, newTask) {
             const changes = [];
-            const fields = ['text', 'date', 'time', 'priority', 'category', 'reminder'];
+            const fields = ['text', 'date', 'startTime', 'endTime', 'priority', 'category', 'reminder', 'notes']; 
             
             fields.forEach(field => {
-                const oldValue = oldTask[field] || 'None';
-                const newValue = newTask[field] || 'None';
-                
-                // Special handling for display formats
-                let oldDisplay = field === 'time' && oldValue !== 'None' ? formatTo12Hour(oldValue) : oldValue;
-                let newDisplay = field === 'time' && newValue !== 'None' ? formatTo12Hour(newValue) : newValue;
+                const oldValue = oldTask[field] || ''; 
+                const newValue = newTask[field] || '';
 
-                if (field === 'reminder') {
-                     oldDisplay = oldValue === 'none' ? 'None' : `${oldValue} min`;
-                     newDisplay = newValue === 'none' ? 'None' : `${newValue} min`;
+                let oldDisplay = oldValue.trim() || 'None';
+                let newDisplay = newValue.trim() || 'None';
+
+                if (field === 'startTime' || field === 'endTime') {
+                    oldDisplay = oldValue !== '' ? formatTo12Hour(oldValue) : 'None';
+                    newDisplay = newValue !== '' ? formatTo12Hour(newValue) : 'None';
+                } else if (field === 'reminder') {
+                    oldDisplay = oldValue === 'none' || oldValue === '' ? 'None' : `${oldValue} min`;
+                    newDisplay = newValue === 'none' || newValue === '' ? 'None' : `${newValue} min`;
+                } else if (field === 'notes') {
+                    if (oldValue.trim() === newValue.trim()) return;
+                    oldDisplay = oldValue.length > 50 ? oldValue.substring(0, 50) + '...' : oldValue;
+                    newDisplay = newValue.length > 50 ? newValue.substring(0, 50) + '...' : newValue;
                 }
-
-                if (oldValue !== newValue && newValue !== undefined) {
+                
+                if (oldDisplay !== newDisplay) {
                     changes.push({ 
-                        field: field.charAt(0).toUpperCase() + field.slice(1), 
+                        field: field.charAt(0).toUpperCase() + field.slice(1).replace('Time', ' Time'), 
                         oldValue: oldDisplay, 
                         newValue: newDisplay 
                     });
@@ -340,22 +509,35 @@
             if (!user) return; 
             const { id, ...payload } = data; 
             
-            // Determine the local action message
             let localActionMessage = action.charAt(0).toUpperCase() + action.slice(1);
-            if (action === 'update' && payload.completed !== undefined) {
-                 localActionMessage = payload.completed ? 'Task Completed' : 'Task Uncompleted';
-            } else if (action === 'update' && payload.notes !== undefined) {
-                 localActionMessage = 'Note Saved';
-            } else if (action === 'update') {
-                 localActionMessage = 'Task Edited';
-            }
+            
+            // --- Common Payload Cleaning (Convert empty strings to null for Firestore) ---
+            const cleanPayload = { ...payload };
+            ['startTime', 'endTime'].forEach(field => {
+                if (cleanPayload[field] === '') cleanPayload[field] = null;
+            });
+            // Reminder and Recurrence are now gone from the form, but we ensure we don't accidentally wipe them if not editing them.
+            if (cleanPayload.recurrence === undefined) cleanPayload.recurrence = data.recurrence || 'none';
+            if (cleanPayload.reminder === undefined) cleanPayload.reminder = data.reminder || 'none';
 
+            cleanPayload.time = cleanPayload.endTime; 
+            
+            const finalPayload = {};
+            Object.keys(cleanPayload).forEach(key => {
+                if (cleanPayload[key] !== null && cleanPayload[key] !== undefined) {
+                    finalPayload[key] = cleanPayload[key];
+                }
+            });
+            // --------------------------------------------------------------------------
 
             // Handle Edit History Logging for general task updates (excluding simple notes/completion)
-            if (action === 'update' && payload.notes === undefined && payload.completed === undefined) {
+            if (action === 'update' && payload.notes === undefined && payload.completed === undefined && payload.subtasks === undefined) {
                 const oldTask = allTasks.find(t => t.id === id);
+                
                 if (oldTask) { 
-                    const changes = getChanges(oldTask, payload);
+                    const comparisonTask = { ...oldTask, ...cleanPayload }; 
+                    const changes = getChanges(oldTask, comparisonTask);
+                    
                     if (changes.length > 0) {
                         const newHistoryEntry = {
                             timestamp: new Date().toISOString(),
@@ -363,37 +545,45 @@
                             action: 'Edited'
                         };
                         
-                        // Pass back the new history array to be saved
-                        payload.history = [...(oldTask.history || []), newHistoryEntry];
-                        
-                        // Use the first change for the last saved indicator
+                        finalPayload.history = [...(oldTask.history || []), newHistoryEntry];
                         localActionMessage = `Edited ${changes[0].field}: ${changes[0].newValue}`;
                     } else {
-                        // No meaningful changes detected, skip DB update if possible (though Firebase handles this)
                         localActionMessage = 'No changes detected';
+                        if (Object.keys(finalPayload).length === 1 && finalPayload.time === oldTask.time) return; 
                     }
                 }
+            } else if (action === 'update' && payload.notes !== undefined) {
+                localActionMessage = 'Note Saved';
+            } else if (action === 'update' && payload.completed !== undefined) {
+                localActionMessage = payload.completed ? 'Task Completed' : 'Task Uncompleted';
+            } else if (action === 'update' && payload.subtasks !== undefined) {
+                localActionMessage = 'Subtasks Updated';
             }
-
 
             showIndicator("Saving...", "info", true); 
             
             try { 
-                if (action === 'add') await addDoc(collection(db, "users", user.uid, "tasks"), { ...payload, history: [] }); 
-                else if (action === 'update') await updateDoc(doc(db, "users", user.uid, "tasks", id), payload); 
-                else if (action === 'delete') await deleteDoc(doc(db, "users", user.uid, "tasks", id)); 
+                if (action === 'add') {
+                    // Reminder and Recurrence default to 'none' for new tasks from the simplified form
+                    await addDoc(collection(db, "users", user.uid, "tasks"), { ...finalPayload, recurrence: 'none', reminder: 'none', history: [] }); 
+                } else if (action === 'update') {
+                    if (Object.keys(finalPayload).length > 0) {
+                       await updateDoc(doc(db, "users", user.uid, "tasks", id), finalPayload);
+                    }
+                } else if (action === 'delete') {
+                    await deleteDoc(doc(db, "users", user.uid, "tasks", id)); 
+                }
                 
-                // Set the status indicator and update last saved info
                 const saveTime = new Date().toLocaleTimeString();
                 DOMElements.lastSavedTime.textContent = saveTime;
                 DOMElements.lastSavedAction.textContent = localActionMessage;
 
                 const successMessage = action === 'add' ? 'Task Added' : action === 'update' ? 'Changes Saved' : 'Task Deleted';
                 showIndicator(successMessage, "success", false, 3000); 
-
+                
             } catch (error) { 
                 console.error("Firestore Error:", error); 
-                showIndicator("Error! Failed to save.", "warning", false, 4000);
+                showIndicator("Error! Failed to save. Check Console.", "warning", false, 6000);
             }
         }
         
@@ -408,11 +598,12 @@
             } 
             if (currentView === 'list') renderListView(filteredTasks); 
             else if (currentView === 'board') renderKanbanView(filteredTasks); 
-            else renderCalendarView(filteredTasks); 
+            else if (currentView === 'calendar') renderCalendarView(filteredTasks);
+            else renderGraphicView(filteredTasks);
             updateDashboard(filteredTasks); 
             updateDynamicElements(); 
         }
-        
+
         function getFilteredTasks() { 
             const now = new Date();
             const showCompleted = DOMElements.toggleShowCompleted ? DOMElements.toggleShowCompleted.checked : true;
@@ -429,6 +620,21 @@
                 .filter(task => (task.text.toLowerCase().includes(currentSearchTerm.toLowerCase()) || (task.tags && task.tags.some(tag => tag.toLowerCase().includes(currentSearchTerm.toLowerCase())))) && (currentCategoryFilter === 'All' || task.category === currentCategoryFilter)); 
         }
 
+        function getTaskUrgencyClasses(task) {
+            const taskDateTime = new Date(`${task.date}T${task.endTime || '23:59:59'}`);
+            let urgencyClasses = '';
+            if (!task.completed) {
+                const now = new Date();
+                const diffHours = (taskDateTime.getTime() - now.getTime()) / 3600000;
+                if (diffHours < 0) {
+                    urgencyClasses = 'pulse-overdue';
+                } else if (diffHours <= 24) { // Due within 24 hours
+                    urgencyClasses = 'pulse-due-soon';
+                }
+            }
+            return urgencyClasses;
+        }
+
         function renderListView(tasks) {
             DOMElements.taskListContainer.innerHTML = '';
             if (isInitialLoad) { DOMElements.taskListContainer.innerHTML = `<div class="space-y-4"><div class="task-item p-4"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-meta"></div></div><div class="task-item p-4"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-meta"></div></div><div class="task-item p-4"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-meta"></div></div></div>`; return; }
@@ -438,7 +644,7 @@
             const sortedGroupKeys = Object.keys(groupedTasks).sort((a, b) => { const aIndex = groupOrder.indexOf(a); const bIndex = groupOrder.indexOf(b); if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex; if (aIndex !== -1) return -1; if (bIndex !== -1) return 1; return new Date(a.split(', ')[1]) - new Date(b.split(', ')[1]); });
             sortedGroupKeys.forEach(groupName => {
                 const tasksInGroup = groupedTasks[groupName];
-                tasksInGroup.sort((a, b) => (a.completed - b.completed) || (new Date(`${a.date}T${a.time || '00:00'}`) - new Date(`${b.date}T${b.time || '00:00'}`)));
+                tasksInGroup.sort((a, b) => (a.completed - b.completed) || (new Date(`${a.date}T${a.endTime || '00:00'}`) - new Date(`${b.date}T${b.endTime || '00:00'}`))); 
                 const completedCount = tasksInGroup.filter(t => t.completed).length;
                 const totalCount = tasksInGroup.length;
                 const groupSection = document.createElement('div'); groupSection.className = 'animate-fade-in';
@@ -448,13 +654,30 @@
             attachDynamicListeners(DOMElements.taskListContainer);
         }
         
-        function updateDashboard(tasks) { if(isInitialLoad) return; const pendingTasks = tasks.filter(t => !t.completed); const now = new Date(); const todayString = now.toISOString().split('T')[0]; const todayPendingCount = pendingTasks.filter(t => t.date === todayString).length; DOMElements.currentDate.innerHTML = `${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})} <span id="today-task-counter" class="text-gray-400 font-normal ml-2"></span>`; document.getElementById('today-task-counter').textContent = todayPendingCount > 0 ? `(${todayPendingCount} tasks left)`: '(No tasks for today)'; const upcomingTasks = pendingTasks.map(t => ({ ...t, dateTime: new Date(`${t.date}T${t.time || '23:59:59'}`) })).filter(t => t.dateTime >= now).sort((a, b) => a.dateTime - b.dateTime); if (upcomingTasks.length > 0) { const firstTask = upcomingTasks[0]; const firstDueTime = firstTask.dateTime.getTime(); const allNextTasks = upcomingTasks.filter(t => t.dateTime.getTime() === firstDueTime); DOMElements.dashboardNextTask.innerHTML = `<div class="text-left">${allNextTasks.map(task => `<p class="font-bold text-lg text-indigo-600 break-words">${task.text}</p>`).join('')}<p class="text-sm text-gray-500 mt-1">${getRelativeDateGroup(firstTask.date)} ${firstTask.time ? `at ${formatTo12Hour(firstTask.time)}` : ''}</p></div>`; } else { DOMElements.dashboardNextTask.innerHTML = `<p class="text-gray-400 text-center">No upcoming tasks!</p>`; } DOMElements.dashboardPendingBreakdown.innerHTML = `<div class="flex justify-between"><span>Today:</span> <span class="font-bold">${todayPendingCount}</span></div> <div class="flex justify-between"><span>This Week:</span> <span class="font-bold">${pendingTasks.filter(t => { const d = new Date(t.date); const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 6 - now.getDay()); return d > now && d <= endOfWeek; }).length}</span></div> <div class="flex justify-between"><span>This Month:</span> <span class="font-bold">${pendingTasks.filter(t => { const d = new Date(t.date); const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 6 - now.getDay()); const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); return d > endOfWeek && d <= endOfMonth; }).length}</span></div>`; const overdueTasks = pendingTasks.map(t => ({ ...t, dateTime: new Date(`${t.date}T${t.time || '23:59:59'}`) })).filter(t => t.dateTime < now).sort((a, b) => a.dateTime - b.dateTime); DOMElements.dashboardOverdueCount.textContent = overdueTasks.length; if (overdueTasks.length > 0) { DOMElements.dashboardOverdue.innerHTML = `<ul class="space-y-1 text-left">${overdueTasks.slice(0, 3).map(task => `<li class="font-semibold text-red-500 truncate">${task.text}</li>`).join('')}</ul>`; } else { DOMElements.dashboardOverdue.innerHTML = `<p class="text-gray-400 text-center">No overdue tasks!</p>`; } }
         function createTaskElement(task) { 
-            const taskDateTime = new Date(`${task.date}T${task.time || '23:59:59'}`); 
+            const taskDateTime = new Date(`${task.date}T${task.endTime || '23:59:59'}`); 
             let timeDiffHtml = !task.completed ? `<span class="relative-time" data-datetime="${taskDateTime.toISOString()}"></span>` : ''; 
             const completedAtHtml = task.completed && task.completedAt ? `<div class="completion-timestamp text-green-600 font-semibold mt-1 text-xs flex items-center gap-1 pl-8"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Completed: ${new Date(task.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${formatTo12Hour(new Date(task.completedAt).toTimeString())}</span></div>` : ''; 
             
-            const subtasksHtml = (task.subtasks || []).map((sub, index) => `<div class="flex items-center justify-between gap-2 ml-4"><div class="flex items-start gap-2 flex-1"><input type="checkbox" id="subtask-${task.id}-${index}" data-subtask-index="${index}" class="subtask-checkbox h-4 w-4 mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" ${sub.completed ? 'checked' : ''}><div class="flex-1"><label for="subtask-${task.id}-${index}" class="text-sm ${sub.completed ? 'completed task-title-completed' : ''}">${sub.text}</label>${sub.completed && sub.completedAt ? `<div class="text-xs text-gray-400 completion-timestamp">Completed: ${new Date(sub.completedAt).toLocaleDateString('en-US', {month:'short',day:'numeric'})} at ${formatTo12Hour(new Date(sub.completedAt).toTimeString())}</div>` : ''}</div></div><div class="flex-shrink-0"><button class="edit-subtask-btn p-1 rounded-full hover:bg-gray-200" data-task-id="${task.id}" data-subtask-index="${index}"><svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button><button class="delete-subtask-btn p-1 rounded-full hover:bg-gray-200" data-task-id="${task.id}" data-subtask-index="${index}"><svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div>`).join(''); 
+            const subtasksHtml = (task.subtasks || []).map((sub, index) => {
+                const subtaskDueDisplay = (sub.dueDate || sub.dueTime) 
+                    ? ` (Due: ${sub.dueDate ? new Date(sub.dueDate + 'T00:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'}) : ''} ${sub.dueTime ? formatTo12Hour(sub.dueTime) : ''})` 
+                    : '';
+
+                return `<div class="flex items-center justify-between gap-2 ml-4">
+                    <div class="flex items-start gap-2 flex-1">
+                        <input type="checkbox" id="subtask-${task.id}-${index}" data-subtask-index="${index}" class="subtask-checkbox h-4 w-4 mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" ${sub.completed ? 'checked' : ''}>
+                        <div class="flex-1">
+                            <label for="subtask-${task.id}-${index}" class="text-sm ${sub.completed ? 'completed task-title-completed' : ''}">${sub.text}${subtaskDueDisplay}</label>
+                            ${sub.completed && sub.completedAt ? `<div class="text-xs text-gray-400 completion-timestamp">Completed: ${new Date(sub.completedAt).toLocaleDateString('en-US', {month:'short',day:'numeric'})} at ${formatTo12Hour(new Date(sub.completedAt).toTimeString())}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <button class="edit-subtask-btn p-1 rounded-full hover:bg-gray-200" data-task-id="${task.id}" data-subtask-index="${index}"><svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                        <button class="delete-subtask-btn p-1 rounded-full hover:bg-gray-200" data-task-id="${task.id}" data-subtask-index="${index}"><svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    </div>
+                </div>`;
+            }).join(''); 
             
             const subtaskProgress = task.subtasks && task.subtasks.length > 0 ? `(${task.subtasks.filter(s=>s.completed).length}/${task.subtasks.length})` : ''; 
             const categoryClass = categoryMap[task.category].color || categoryMap['Other'].color; 
@@ -463,178 +686,867 @@
             const noteSnippet = hasNotes ? task.notes.substring(0, 40) + (task.notes.length > 40 ? '...' : '') : ''; 
             const subtaskIndicatorHtml = hasSubtasks ? `<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>` : ''; 
             
-            // NEW: Reminder indicator
             const reminderIndicator = task.reminder && task.reminder !== 'none' ? `<svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Reminder set"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1"></path></svg>` : '';
 
-            // Conditional Edit History Button
+            const timeRangeDisplay = (task.startTime && task.endTime) 
+                ? `${formatTo12Hour(task.startTime)} - ${formatTo12Hour(task.endTime)}`
+                : (task.endTime ? `By ${formatTo12Hour(task.endTime)}` : 'All Day');
+
             const editHistoryButton = (task.history && task.history.length > 0) 
                 ? `<button class="show-history-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Edit History" data-task-id="${task.id}"><svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></button>`
                 : '';
+            
+            const detailsButton = (hasNotes || hasSubtasks) ? 
+                `<button class="details-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Details"><svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>`
+                : '';
 
-            return `<li class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-datetime="${taskDateTime.toISOString()}"><div class="flex items-start justify-between p-4"><div class="flex items-start gap-3 flex-grow min-w-0"><input type="checkbox" class="task-checkbox h-5 w-5 rounded border-gray-300 text-indigo-600 flex-shrink-0 mt-1 focus:ring-indigo-500" ${task.completed ? 'checked' : ''}><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span class="priority-flag ${priorityFlagMap[task.priority] || 'bg-gray-400'}"></span><span class="flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-full ${categoryClass}">${categoryMap[task.category].icon} ${task.category}</span>${reminderIndicator}<span class="font-medium break-words ${task.completed ? 'task-title-completed' : ''}">${task.text}</span></div><div class="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap pl-8 ${task.completed ? 'completed' : ''}"><span>${taskDateTime.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })} ${formatTo12Hour(task.time)}</span>${!task.completed ? `<span class="mx-1">•</span> ${timeDiffHtml}` : ''}${hasNotes ? `<div class="flex items-center gap-1 text-gray-400" title="${task.notes}"><svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg><span class="truncate italic">${noteSnippet}</span></div>`: ''}${hasSubtasks ? subtaskIndicatorHtml : ''}</div><div id="notes-save-indicator-${task.id}" class="notes-save-indicator opacity-0 text-xs text-green-600 flex items-center gap-1 mt-1 pl-8"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Saved</div> ${completedAtHtml} </div></div><div class="flex items-center flex-shrink-0 ml-2">${editHistoryButton}<button class="details-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Details"><svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button><button class="edit-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Edit"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button><button class="delete-btn text-gray-500 hover:text-red-500 p-1.5 rounded-full hover:bg-gray-100" title="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div><div class="details-container px-4"><div class="notes-container border-t pt-4"><h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Notes</h4><textarea data-task-id="${task.id}" class="task-notes-textarea" placeholder="Click to add notes...">${task.notes || ''}</textarea></div><div class="subtask-container border-t pt-4 mt-4"><h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Subtasks ${subtaskProgress}</h4><div class="space-y-2">${subtasksHtml}<div class="grid grid-cols-3 gap-2 pt-2"><input type="text" class="new-subtask-input col-span-2 bg-gray-100 rounded px-2 py-1 text-sm border focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="New subtask..."><input type="date" class="new-subtask-date-input bg-gray-100 rounded px-2 py-1 text-sm border focus:outline-none focus:ring-1 focus:ring-indigo-500"><button class="add-subtask-btn col-span-3 mt-1 bg-indigo-500 hover:bg-indigo-600 text-white text-xs py-1 rounded">Add Subtask</button></div></div></div></div><div class="subtask-alert text-red-500 text-xs font-bold mt-2 px-4 pb-2 hidden"></div></li>`; }
-        function renderKanbanView(tasks) { DOMElements.kanbanBoard.innerHTML = '<p class="text-center text-sm text-gray-500 mb-4 col-span-full">Drag and drop tasks to change their category.</p>'; const columns = { 'Personal': [], 'Work': [], 'School': [], 'Other': [] }; tasks.forEach(task => { if (columns[task.category]) { columns[task.category].push(task); }}); for (const category in columns) { const columnEl = document.createElement('div'); columnEl.className = 'kanban-column'; columnEl.dataset.category = category; columnEl.innerHTML = `<h3 class="kanban-column-title">${categoryMap[category].icon} ${category}</h3><div class="kanban-tasks"></div>`; const tasksContainer = columnEl.querySelector('.kanban-tasks'); columns[category].forEach(task => { const cardEl = document.createElement('div'); cardEl.className = 'kanban-card'; cardEl.dataset.id = task.id; cardEl.draggable = true; cardEl.innerHTML = `<div class="flex items-center gap-2"><svg class="w-5 h-5 text-gray-400 cursor-grab flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg><span class="flex-grow">${task.text}</span></div>`; tasksContainer.appendChild(cardEl); }); DOMElements.kanbanBoard.appendChild(columnEl); } }
+            return `<li class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-datetime="${taskDateTime.toISOString()}"><div class="flex items-start justify-between p-4"><div class="flex items-start gap-3 flex-grow min-w-0"><input type="checkbox" class="task-checkbox h-5 w-5 rounded border-gray-300 text-indigo-600 flex-shrink-0 mt-1 focus:ring-indigo-500" ${task.completed ? 'checked' : ''}><div class="min-w-0"><div class="flex items-center gap-2 flex-wrap"><span class="priority-flag ${priorityFlagMap[task.priority] || 'bg-gray-400'}"></span><span class="flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-full ${categoryClass}">${categoryMap[task.category].icon} ${task.category}</span>${reminderIndicator}<span class="font-medium break-words ${task.completed ? 'task-title-completed' : ''}">${task.text}</span></div><div class="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap pl-8 ${task.completed ? 'completed' : ''}"><span>${taskDateTime.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })} ${timeRangeDisplay}</span>${!task.completed ? `<span class="mx-1">•</span> <span class="relative-time" data-datetime="${taskDateTime.toISOString()}"></span>` : ''}${hasNotes ? `<div class="flex items-center gap-1 text-gray-400" title="${task.notes}"><svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg><span class="truncate italic">${noteSnippet}</span></div>`: ''}${hasSubtasks ? subtaskIndicatorHtml : ''}</div><div id="notes-save-indicator-${task.id}" class="notes-save-indicator opacity-0 text-xs text-green-600 flex items-center gap-1 mt-1 pl-8"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Saved</div> ${completedAtHtml} </div></div><div class="flex items-center flex-shrink-0 ml-2">${editHistoryButton}${detailsButton}<button class="edit-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Edit"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button><button class="delete-btn text-gray-500 hover:text-red-500 p-1.5 rounded-full hover:bg-gray-100" title="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div><div class="details-container px-4"><div class="notes-container border-t pt-4"><h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Notes</h4><textarea data-task-id="${task.id}" class="task-notes-textarea" placeholder="Click to add notes...">${task.notes || ''}</textarea></div><div class="subtask-container border-t pt-4 mt-4"><h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Subtasks ${subtaskProgress}</h4><div class="space-y-2">${subtasksHtml}<div class="grid grid-cols-4 gap-2 pt-2 items-center"><input type="text" class="new-subtask-input col-span-4 bg-gray-100 rounded px-2 py-1 text-sm border focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="New subtask name..."><input type="date" class="new-subtask-date-input col-span-2 bg-gray-100 rounded px-2 py-1 text-sm border focus:outline-none focus:ring-1 focus:ring-indigo-500"><input type="time" class="new-subtask-time-input col-span-2 bg-gray-100 rounded px-2 py-1 text-sm border focus:outline-none focus:ring-1 focus:ring-indigo-500"><button class="add-subtask-btn col-span-4 mt-1 bg-indigo-500 hover:bg-indigo-600 text-white text-xs py-1 rounded">Add Subtask</button></div></div></div></div><div class="subtask-alert text-red-500 text-xs font-bold mt-2 px-4 pb-2 hidden"></div></li>`; 
+        }
+        
+        function updateDashboard(tasks) { if(isInitialLoad) return; const pendingTasks = tasks.filter(t => !t.completed); const now = new Date(); const todayString = now.toISOString().split('T')[0]; const todayPendingCount = pendingTasks.filter(t => t.date === todayString).length; DOMElements.currentDate.innerHTML = `${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})} <span id="today-task-counter" class="text-gray-400 font-normal ml-2"></span>`; document.getElementById('today-task-counter').textContent = todayPendingCount > 0 ? `(${todayPendingCount} tasks left)`: '(No tasks for today)'; const upcomingTasks = pendingTasks.map(t => ({ ...t, dateTime: new Date(`${t.date}T${t.endTime || '23:59:59'}`) })).filter(t => t.dateTime >= now).sort((a, b) => a.dateTime - b.dateTime); if (upcomingTasks.length > 0) { const firstTask = upcomingTasks[0]; const firstDueTime = firstTask.dateTime.getTime(); const allNextTasks = upcomingTasks.filter(t => t.dateTime.getTime() === firstDueTime); DOMElements.dashboardNextTask.innerHTML = `<div class="text-left">${allNextTasks.map(task => `<p class="font-bold text-lg text-indigo-600 break-words">${task.text}</p>`).join('')}<p class="text-sm text-gray-500 mt-1">${getRelativeDateGroup(firstTask.date)} ${firstTask.endTime ? `at ${formatTo12Hour(firstTask.endTime)}` : ''}</p></div>`; } else { DOMElements.dashboardNextTask.innerHTML = `<p class="text-gray-400 text-center">No upcoming tasks!</p>`; } DOMElements.dashboardPendingBreakdown.innerHTML = `<div class="flex justify-between"><span>Today:</span> <span class="font-bold">${todayPendingCount}</span></div> <div class="flex justify-between"><span>This Week:</span> <span class="font-bold">${pendingTasks.filter(t => { const d = new Date(t.date); const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 6 - now.getDay()); return d > now && d <= endOfWeek; }).length}</span></div> <div class="flex justify-between"><span>This Month:</span> <span class="font-bold">${pendingTasks.filter(t => { const d = new Date(t.date); const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 6 - now.getDay()); const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); return d > endOfWeek && d <= endOfMonth; }).length}</span></div>`; const overdueTasks = pendingTasks.map(t => ({ ...t, dateTime: new Date(`${t.date}T${t.endTime || '23:59:59'}`) })).filter(t => t.dateTime < now).sort((a, b) => a.dateTime - b.dateTime); DOMElements.dashboardOverdueCount.textContent = overdueTasks.length; if (overdueTasks.length > 0) { DOMElements.dashboardOverdue.innerHTML = `<ul class="space-y-1 text-left">${overdueTasks.slice(0, 3).map(task => `<li class="font-semibold text-red-500 truncate">${task.text}</li>`).join('')}</ul>`; } else { DOMElements.dashboardOverdue.innerHTML = `<p class="text-gray-400 text-center">No overdue tasks!</p>`; } }
 
-        // --- CALENDAR VIEW LOGIC ---
+        function renderKanbanView(tasks) { 
+            DOMElements.kanbanBoard.innerHTML = '';
+            const categories = ['Personal', 'Work', 'School', 'Other'];
+            categories.forEach(category => {
+                const column = document.createElement('div');
+                column.className = 'kanban-column';
+                column.dataset.category = category;
+                column.setAttribute('draggable', false);
+                
+                const categoryInfo = categoryMap[category] || categoryMap['Other'];
+                column.innerHTML = `<h3 class="kanban-column-title">${categoryInfo.icon} ${category}</h3><div class="kanban-tasks space-y-3" data-category="${category}"></div>`;
+                DOMElements.kanbanBoard.appendChild(column);
+                
+                const tasksContainer = column.querySelector('.kanban-tasks');
+                tasks.filter(t => t.category === category && !t.completed).forEach(task => {
+                    const card = document.createElement('div');
+                    const urgencyClass = getTaskUrgencyClasses(task);
+                    card.className = `kanban-card ${urgencyClass}`;
+                    card.setAttribute('draggable', true);
+                    card.dataset.id = task.id;
+                    
+                    const taskDateTime = new Date(`${task.date}T${task.endTime || '23:59:59'}`);
+                    const relativeTimeHtml = `<span class="relative-time-board text-xs text-gray-500 mt-1 block" data-datetime="${taskDateTime.toISOString()}">${task.date}${task.endTime ? ` at ${formatTo12Hour(task.endTime)}` : ''}</span>`;
 
-        function getTaskSummaryBadges(task) {
-            const priorityFlag = `<span class="priority-flag ${priorityFlagMap[task.priority] || 'bg-gray-400'}"></span>`;
-            const categoryBadge = `<span class="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${categoryMap[task.category]?.color || categoryMap['Other'].color}">${categoryMap[task.category]?.icon || categoryMap['Other'].icon} ${task.category}</span>`;
-            const timeDisplay = task.time ? `<span class="text-gray-500 text-xs">${formatTo12Hour(task.time)}</span>` : '';
-            const reminderIndicator = task.reminder && task.reminder !== 'none' ? `<svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Reminder set"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1"></path></svg>` : '';
-
-            return { priorityFlag, categoryBadge, timeDisplay, reminderIndicator };
+                    // 🚨 FIX: Reorder elements to put dot first + add drag dots
+                    card.innerHTML = `<div class="flex items-start justify-between">
+                        <div class="flex items-start gap-2">
+                            <span class="priority-flag ${priorityFlagMap[task.priority]} mt-1"></span>
+                            <p class="text-sm font-medium break-words">${task.text}</p>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400 cursor-grab flex-shrink-0 ml-1" fill="currentColor" viewBox="0 0 20 20" title="Drag to move"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/></svg>
+                    </div>${relativeTimeHtml}`;
+                    
+                    tasksContainer.appendChild(card);
+                    
+                    // Add click listener for editing right from the Kanban card
+                    card.addEventListener('click', () => showEditModal(task.id));
+                });
+            });
         }
 
-        function renderCalendarView() { 
-            const m = currentCalendarDate.getMonth(), y = currentCalendarDate.getFullYear(); 
-            DOMElements.calendarGrid.innerHTML = ''; 
-            DOMElements.calendarMonthYear.textContent = new Date(y, m).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); 
-            const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m + 1, 0).getDate(); 
-            const filteredTasks = getFilteredTasks();
+        function renderCalendarView(tasks) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
-            for (let i = 0; i < firstDay; i++) DOMElements.calendarGrid.insertAdjacentHTML('beforeend', `<div class="calendar-day other-month"></div>`); 
+            const firstDayOfMonth = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1);
+            const lastDayOfMonth = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0);
             
-            for (let d = 1; d <= daysInMonth; d++) { 
-                const dateString = new Date(y, m, d).toISOString().split('T')[0];
-                const dayEl = document.createElement('div'); 
-                dayEl.className = 'calendar-day'; 
-                dayEl.dataset.date = dateString; 
-
-                const today = new Date(); 
-                if (d === today.getDate() && m === today.getMonth() && y === today.getFullYear()) dayEl.classList.add('is-today'); 
+            DOMElements.calendarMonthYear.textContent = firstDayOfMonth.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+            DOMElements.calendarGrid.innerHTML = '';
+            
+            const startDay = firstDayOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
+            
+            // Fill leading empty days (from previous month)
+            for (let i = 0; i < startDay; i++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day other-month';
+                DOMElements.calendarGrid.appendChild(dayEl);
+            }
+            
+            // Render actual days
+            for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
+                const date = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), day);
+                const dateString = date.toISOString().split('T')[0];
+                const now = new Date(); // To check urgency
                 
-                const tasksOnDay = filteredTasks.filter(t => t.date === dateString);
-
-                const headerEl = document.createElement('div'); 
-                headerEl.className = 'calendar-day-header'; 
-                headerEl.textContent = d; 
-                dayEl.appendChild(headerEl); 
+                const isToday = date.toDateString() === today.toDateString();
                 
-                const tasksContainer = document.createElement('div'); 
-                tasksContainer.className = 'flex flex-wrap pointer-events-none justify-center'; 
-                tasksOnDay.slice(0, 9).forEach(task => { 
-                    tasksContainer.innerHTML += `<span class="task-dot ${categoryDotMap[task.category] || 'bg-gray-400'}" title="${task.text}"></span>`; 
-                }); 
-                dayEl.appendChild(tasksContainer); 
-                DOMElements.calendarGrid.appendChild(dayEl); 
+                const dayTasks = tasks.filter(t => t.date === dateString);
+                
+                // Determine urgency for the *day box* based on tasks due today
+                let dayUrgencyClass = '';
+                if (dayTasks.some(t => getTaskUrgencyClasses(t) === 'pulse-overdue')) {
+                    dayUrgencyClass = 'pulse-overdue';
+                } else if (dayTasks.some(t => getTaskUrgencyClasses(t) === 'pulse-due-soon')) {
+                    dayUrgencyClass = 'pulse-due-soon';
+                }
+
+                const dayEl = document.createElement('div');
+                // 🚨 FIX: Apply pulsing classes to the day box element itself
+                dayEl.className = `calendar-day ${isToday ? 'is-today' : ''} ${dayUrgencyClass}`;
+                dayEl.dataset.date = dateString;
+                dayEl.dataset.day = day;
+                
+                // Header (Day number)
+                dayEl.innerHTML = `<div class="calendar-day-header ${isToday ? 'is-today' : ''}">${day}</div>`;
+                
+                // Task Dots
+                const taskDots = dayTasks.slice(0, 4).map(t => {
+                    const dotClass = categoryDotMap[t.category] || categoryDotMap['Other'];
+                    
+                    // Dots no longer pulse
+                    return `<div class="task-dot ${dotClass}" title="${t.text}"></div>`;
+                }).join('');
+                
+                const remainingCount = dayTasks.length > 4 ? `<span class="text-xs text-gray-400"> +${dayTasks.length - 4}</span>` : '';
+                
+                const tasksContainer = document.createElement('div');
+                tasksContainer.className = 'flex flex-wrap pt-1';
+                tasksContainer.innerHTML = taskDots + remainingCount;
+                dayEl.appendChild(tasksContainer);
+                
+                DOMElements.calendarGrid.appendChild(dayEl);
+            }
+        }
+        
+        function renderGraphicView(tasks) {
+            DOMElements.ganttChart.innerHTML = '';
+            document.getElementById('current-time-line')?.remove(); // Clear time line before re-render
+            DOMElements.ganttChart.style.minWidth = '100%';
+            
+            // Filter only tasks that have date, startTime, and endTime
+            const scheduledTasks = tasks.filter(t => t.date && t.startTime && t.endTime);
+            if (scheduledTasks.length === 0) {
+                DOMElements.ganttChartContainer.classList.add('hidden');
+                DOMElements.ganttNoTasksMessage.classList.remove('hidden');
+                DOMElements.ganttTitle.textContent = graphicView === 'day' 
+                    ? currentGraphicDate.toLocaleDateString('en-US', { dateStyle: 'full' })
+                    : getWeekRange(currentGraphicDate);
+                return;
+            }
+
+            DOMElements.ganttChartContainer.classList.remove('hidden');
+            DOMElements.ganttNoTasksMessage.classList.add('hidden');
+            
+            const now = new Date();
+
+            let startDate, endDate, totalUnits, unitWidthPx;
+
+            if (graphicView === 'day') {
+                startDate = new Date(currentGraphicDate.getFullYear(), currentGraphicDate.getMonth(), currentGraphicDate.getDate());
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 1);
+                totalUnits = 24 * 60; // Total minutes in a day
+                unitWidthPx = 1.5; 
+                DOMElements.ganttTitle.textContent = startDate.toLocaleDateString('en-US', { dateStyle: 'full' });
+            } else {
+                // Calculate the start of the week (Sunday)
+                const firstDayOfWeek = new Date(currentGraphicDate);
+                firstDayOfWeek.setDate(currentGraphicDate.getDate() - currentGraphicDate.getDay()); 
+                
+                startDate = new Date(firstDayOfWeek.getFullYear(), firstDayOfWeek.getMonth(), firstDayOfWeek.getDate());
+                startDate.setHours(0, 0, 0, 0);
+
+                endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 7); 
+                totalUnits = 7 * 24 * 60; // Total minutes in a week
+                unitWidthPx = 0.5; 
+                DOMElements.ganttTitle.textContent = getWeekRange(currentGraphicDate);
+            }
+
+            // Set the minimum width for scrolling
+            const fixedLabelWidth = 250;
+            DOMElements.ganttChart.style.minWidth = `${totalUnits * unitWidthPx + fixedLabelWidth}px`; 
+
+            // Filter tasks for the current view period
+            const tasksToDisplay = scheduledTasks.filter(task => {
+                const start = new Date(`${task.date}T${task.startTime}`);
+                const end = new Date(`${task.date}T${task.endTime}`);
+                return end >= startDate && start < endDate;
+            }).sort((a, b) => {
+                const aTime = new Date(`${a.date}T${a.startTime}`);
+                const bTime = new Date(`${b.date}T${b.startTime}`);
+                return aTime - bTime;
+            });
+
+            // 1. Render Timeline Header (Day View: Hours, Week View: Days)
+            const timelineHeader = document.createElement('div');
+            timelineHeader.className = 'gantt-timeline-header flex flex-row';
+            timelineHeader.innerHTML = `<div class="gantt-task-label bg-white border-b border-r text-gray-800 font-bold">Task</div>`;
+            
+            if (graphicView === 'day') {
+                for (let h = 0; h < 24; h += 1) {
+                    const header = document.createElement('div');
+                    header.className = `gantt-day-header text-gray-500 border-b flex-grow-0`;
+                    header.style.width = `${60 * unitWidthPx}px`; 
+                    header.textContent = h === 0 ? '12am' : (h > 12 ? `${h - 12}pm` : `${h}am`);
+                    header.style.textAlign = 'left';
+                    header.style.paddingLeft = '5px';
+                    if (h === now.getHours() && startDate.toISOString().split('T')[0] === now.toISOString().split('T')[0]) {
+                           header.classList.add('current-day');
+                           header.style.backgroundColor = '#eef2ff';
+                    }
+                    timelineHeader.appendChild(header);
+                }
+            } else {
+                for (let d = 0; d < 7; d++) {
+                    const dayDate = new Date(startDate);
+                    dayDate.setDate(startDate.getDate() + d);
+                    const dayStr = dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    const isToday = dayDate.toISOString().split('T')[0] === now.toISOString().split('T')[0];
+                    const header = document.createElement('div');
+                    header.className = `gantt-day-header text-gray-500 border-b border-r ${isToday ? 'current-day' : ''}`;
+                    header.style.width = `${24 * 60 * unitWidthPx}px`; 
+                    header.textContent = dayStr;
+                    timelineHeader.appendChild(header);
+                }
+            }
+            DOMElements.ganttChart.appendChild(timelineHeader);
+
+            // 2. Render Task Rows
+            tasksToDisplay.forEach(task => {
+                // Ensure date parsing is correct using the date and time strings
+                const start = new Date(`${task.date}T${task.startTime}`);
+                const end = new Date(`${task.date}T${task.endTime}`);
+                
+                const startMinutes = (start.getTime() - startDate.getTime()) / (1000 * 60);
+                const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+                
+                const visibleStartMinutes = Math.max(0, startMinutes);
+                const visibleEndMinutes = Math.min(totalUnits, startMinutes + durationMinutes);
+                const visibleDurationMinutes = visibleEndMinutes - visibleStartMinutes;
+                
+                if (visibleDurationMinutes <= 0) return; 
+
+                const taskRow = document.createElement('div');
+                taskRow.className = 'gantt-task-row flex flex-row';
+                taskRow.dataset.taskId = task.id;
+
+                taskRow.innerHTML = `<div class="gantt-task-label" title="${task.text}">${task.text}</div>`;
+
+                const barArea = document.createElement('div');
+                barArea.className = 'gantt-task-bar-area';
+                barArea.style.width = `${totalUnits * unitWidthPx}px`; 
+
+                const taskBar = document.createElement('div');
+                taskBar.className = `gantt-task-bar gantt-bar-color-${task.category} ${task.completed ? 'opacity-50' : ''}`;
+                taskBar.style.left = `${visibleStartMinutes * unitWidthPx}px`;
+                taskBar.style.width = `${visibleDurationMinutes * unitWidthPx}px`;
+                
+                taskBar.innerHTML = `<span class="px-1">${task.text}</span>`;
+                taskBar.title = `Task: ${task.text}\nStart: ${formatTo12Hour(task.startTime)}\nEnd: ${formatTo12Hour(task.endTime)}`;
+                
+                taskBar.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showEditModal(task.id);
+                });
+
+                barArea.appendChild(taskBar);
+                taskRow.appendChild(barArea);
+                DOMElements.ganttChart.appendChild(taskRow);
+            });
+            
+            // 3. Render current time line (Day View Only)
+            if (graphicView === 'day' && startDate.toISOString().split('T')[0] === now.toISOString().split('T')[0]) {
+                const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                const nowPosition = nowMinutes * unitWidthPx;
+                
+                const timeline = document.createElement('div');
+                timeline.id = 'current-time-line';
+                timeline.style.left = `${fixedLabelWidth + nowPosition}px`;
+                
+                // Append to the scrollable container's immediate parent
+                DOMElements.ganttChartContainer.appendChild(timeline); 
+                
+                const timeDot = document.createElement('div');
+                timeDot.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: -4px;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    background-color: #ef4444;
+                    z-index: 21;
+                `;
+                timeline.appendChild(timeDot);
+                
+                // Auto-scroll the container to center on the current time
+                const scrollPosition = nowPosition + fixedLabelWidth - (DOMElements.ganttChartContainer.offsetWidth / 2);
+                DOMElements.ganttChartContainer.scrollLeft = Math.max(0, scrollPosition);
+            } else {
+                 document.getElementById('current-time-line')?.remove();
             }
         }
 
-        function handleCalendarDayClick(e) { 
-            const dayEl = e.target.closest('.calendar-day:not(.other-month)'); 
-            if (!dayEl) return; 
+        function getRelativeDateGroup(dateString) { const today = new Date(); today.setHours(0,0,0,0); const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1); const taskDate = new Date(dateString + 'T00:00:00'); if (taskDate < today) return "Overdue"; if (taskDate.getTime() === today.getTime()) return "Today"; if (taskDate.getTime() === tomorrow.getTime()) return "Tomorrow"; return taskDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric'}); }
 
-            const dateString = dayEl.dataset.date;
-            const date = new Date(dateString + 'T00:00:00'); 
+        function formatTo12Hour(timeString) { 
+            if (!timeString) return ''; 
+            let parts = timeString.split(':');
+            let hour, minute;
+            if (parts.length >= 2) {
+                 [hour, minute] = parts;
+            } else {
+                 const date = new Date(timeString);
+                 if (isNaN(date)) return '';
+                 hour = date.getHours();
+                 minute = date.getMinutes();
+            }
+            const date = new Date();
+            date.setHours(hour, minute); 
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); 
+        }
+
+        function switchView(view) { 
+            currentView = view; 
+            const views = { list: DOMElements.listViewContainer, board: DOMElements.kanbanViewContainer, calendar: DOMElements.calendarViewContainer, graphic: DOMElements.graphicViewContainer }; 
+            const buttons = { list: DOMElements.viewListBtn, board: DOMElements.viewBoardBtn, calendar: DOMElements.viewCalendarBtn, graphic: DOMElements.viewGraphicBtn }; 
+            for (const v in views) { 
+                views[v].classList.toggle('hidden', v !== view); 
+                buttons[v].classList.toggle('bg-indigo-600', v === view); 
+                buttons[v].classList.toggle('text-white', v === view); 
+                buttons[v].classList.toggle('text-gray-600', v !== view);
+                buttons[v].classList.toggle('hover:bg-gray-200', v !== view);
+                buttons[v].classList.toggle('bg-gray-200', v !== view && v !== 'list');
+            } 
+            DOMElements.categoryFilters.classList.toggle('hidden', view === 'calendar' || view === 'graphic'); 
+            DOMElements.searchInput.placeholder = view === 'board' ? 'Filter board...' : 'Search tasks or #tags...'; 
             
-            const tasks = allTasks
-                .filter(t => t.date === dateString)
-                .sort((a, b) => (new Date(`${a.date}T${a.time || '23:59:59'}`) - new Date(`${b.date}T${b.time || '23:59:59'}`)));
+            DOMElements.calendarDayModal.classList.add('hidden');
+            
+            if (view === 'graphic') {
+                setGraphicView(graphicView);
+            }
 
-            DOMElements.calendarModalTitle.textContent = `Tasks for ${date.toLocaleDateString('en-US', { dateStyle: 'full' })}`; 
-            DOMElements.calendarModalTasks.innerHTML = tasks.length 
-                ? tasks.map(t => {
-                    const { priorityFlag, categoryBadge, timeDisplay, reminderIndicator } = getTaskSummaryBadges(t);
-                    const taskDateTime = new Date(`${t.date}T${t.time || '23:59:59'}`);
-                    
-                    let urgencyClasses = '';
-                    if (!t.completed) {
-                        const now = new Date();
-                        const diffHours = (taskDateTime.getTime() - now.getTime()) / 3600000;
-                        if (diffHours < 0) {
-                            urgencyClasses = 'pulse-overdue';
-                        } else if (diffHours <= 1) {
-                            urgencyClasses = 'pulse-due-soon';
-                        }
-                    }
+            refreshDynamicContent(); 
+        }
 
-                    const editHistoryButton = (t.history && t.history.length > 0) 
-                        ? `<button class="show-history-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Edit History" data-task-id="${t.id}"><svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></button>`
-                        : '';
+        function setGraphicView(view) {
+            graphicView = view;
+            currentGraphicDate = new Date(); 
+            DOMElements.ganttViewDayBtn.classList.toggle('bg-indigo-600', view === 'day');
+            DOMElements.ganttViewDayBtn.classList.toggle('text-white', view === 'day');
+            DOMElements.ganttViewDayBtn.classList.toggle('bg-gray-200', view !== 'day');
+            DOMElements.ganttViewDayBtn.classList.toggle('text-gray-800', view !== 'day');
 
-                    const notesHtml = t.notes ? `<div class="notes-container pt-4 border-t"><h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Notes</h4><p class="text-sm text-gray-700 whitespace-pre-wrap">${t.notes}</p></div>` : '';
-                    
-                    return `
-                        <div class="calendar-task-item p-3 ${t.completed ? 'completed opacity-90' : 'bg-white'} flex flex-col gap-2 shadow-sm border border-gray-100 ${urgencyClasses}" data-id="${t.id}" data-datetime="${taskDateTime.toISOString()}">
-                            <div class="flex items-start justify-between">
-                                <div class="flex items-start gap-3 flex-grow min-w-0">
-                                    <input type="checkbox" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 flex-shrink-0 mt-1 focus:ring-indigo-500" ${t.completed ? 'checked' : ''} data-id="${t.id}">
-                                    <div class="min-w-0">
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            ${priorityFlag}
-                                            ${categoryBadge}
-                                            ${reminderIndicator}
-                                            <span class="font-medium break-words ${t.completed ? 'task-title-completed text-gray-500' : 'text-gray-800'}">${t.text}</span>
-                                        </div>
-                                        <div class="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap pl-8 ${t.completed ? 'completed' : ''}">
-                                            <span>${timeDisplay}</span>
-                                            ${!t.completed ? `<span class="mx-1">•</span> <span class="relative-time" data-datetime="${taskDateTime.toISOString()}"></span>` : ''}
+            DOMElements.ganttViewWeekBtn.classList.toggle('bg-indigo-600', view === 'week');
+            DOMElements.ganttViewWeekBtn.classList.toggle('text-white', view === 'week');
+            DOMElements.ganttViewWeekBtn.classList.toggle('bg-gray-200', view !== 'week');
+            DOMElements.ganttViewWeekBtn.classList.toggle('text-gray-800', view !== 'week');
+            
+            refreshDynamicContent();
+        }
+
+        function setSmartDefaults() { DOMElements.addTaskDate.value = new Date().toISOString().split('T')[0]; const now = new Date(); DOMElements.addTaskEndTime.value = `${String((now.getHours() + 1) % 24).padStart(2, '0')}:00`; DOMElements.addTaskStartTime.value = `${String(now.getHours() % 24).padStart(2, '0')}:00`; }
+        function showAddTaskModal() { DOMElements.addTaskForm.reset(); setSmartDefaults(); DOMElements.addTaskModal.classList.remove('hidden'); DOMElements.addTaskText.focus(); }
+        function hideAddTaskModal() { DOMElements.addTaskModal.classList.add('hidden'); }
+        function hideEditModal() { DOMElements.editModal.classList.add('hidden'); taskToEditId = null; }
+        function showEditModal(taskId) { 
+            taskToEditId = taskId; 
+            const task = allTasks.find(t => t.id === taskId); 
+            if(task) { 
+                DOMElements.editTaskText.value = task.text; 
+                DOMElements.editTaskDate.value = task.date; 
+                DOMElements.editTaskStartTime.value = task.startTime || ''; 
+                DOMElements.editTaskEndTime.value = task.endTime || '';      
+                DOMElements.editTaskCategory.value = task.category; 
+                DOMElements.editTaskPriority.value = task.priority || 'medium'; 
+                DOMElements.editTaskNotes.value = task.notes || ''; 
+                DOMElements.editTaskTags.value = task.tags ? task.tags.join(', ') : ''; 
+                
+                if (task.history && task.history.length > 0) {
+                    DOMElements.editHistoryBtn.classList.remove('hidden');
+                } else {
+                    DOMElements.editHistoryBtn.classList.add('hidden');
+                }
+                
+                DOMElements.editModal.classList.remove('hidden'); 
+            } 
+        }
+
+        function hideConfirmModal() { 
+            taskToDeleteId = null; 
+            DOMElements.confirmModal.classList.add('hidden'); 
+            DOMElements.confirmDeleteBtn.textContent = 'Delete'; 
+            DOMElements.confirmModalContent.classList.remove('max-w-md'); 
+            DOMElements.confirmModalContent.classList.add('max-w-sm'); 
+            DOMElements.confirmModalText.innerHTML = 'This action cannot be undone.'; 
+        }
+        function handleCategoryFilter(e) { const target = e.target.closest('.category-filter-btn'); if (target) { currentCategoryFilter = target.dataset.category; styleCategoryFilters(); refreshDynamicContent(); } }
+        
+        async function handleAddSubtask(taskId, text, dueDate, dueTime) { 
+            const task = allTasks.find(t => t.id === taskId); 
+            if (task) { 
+                const newSubtask = { text, completed: false, completedAt: null, dueDate: dueDate || null, dueTime: dueTime || null }; 
+                await crudOperation('update', { id: taskId, subtasks: [...(task.subtasks || []), newSubtask] }); 
+            } 
+        }
+
+        // 🆕 NEW FUNCTION: Handle subtask status change
+        async function handleSubtaskStatusChange(taskId, subtaskIndex, isCompleted) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const updatedSubtasks = [...task.subtasks];
+            updatedSubtasks[subtaskIndex] = {
+                ...updatedSubtasks[subtaskIndex],
+                completed: isCompleted,
+                completedAt: isCompleted ? new Date().toISOString() : null
+            };
+
+            await crudOperation('update', { id: taskId, subtasks: updatedSubtasks });
+        }
+
+        // 🆕 NEW FUNCTION: Handle subtask edit 
+        async function handleEditSubtask(taskId, subtaskIndex) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const subtask = task.subtasks[subtaskIndex];
+            const newText = prompt("Edit Subtask Name:", subtask.text);
+            if (newText === null || newText.trim() === "") return;
+
+            const newDate = prompt("Edit Due Date (YYYY-MM-DD):", subtask.dueDate || '');
+            const newTime = prompt("Edit Due Time (HH:MM - 24hr format):", subtask.dueTime || '');
+
+            const updatedSubtasks = [...task.subtasks];
+            updatedSubtasks[subtaskIndex] = {
+                ...subtask,
+                text: newText.trim(),
+                dueDate: newDate ? newDate.trim() : null,
+                dueTime: newTime ? newTime.trim() : null,
+            };
+
+            await crudOperation('update', { id: taskId, subtasks: updatedSubtasks });
+        }
+
+        // 🆕 NEW FUNCTION: Handle subtask delete
+        async function handleDeleteSubtask(taskId, subtaskIndex) {
+            if (!confirm("Are you sure you want to delete this subtask?")) return;
+
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const updatedSubtasks = task.subtasks.filter((_, index) => index !== subtaskIndex);
+
+            await crudOperation('update', { id: taskId, subtasks: updatedSubtasks });
+        }
+
+
+        function handleLogout() { DOMElements.logoutPanel.classList.add('hidden'); showIndicator("Logging out...", "info", true); signOut(auth).then(() => { hideIndicator(); DOMElements.loginForm.reset(); showFlashMessage(DOMElements.logoutSuccessMessage, "Successfully logged out!"); }); }
+        function calculateAndShowStats() { const completedTasks = allTasks.filter(t => t.completed); const totalCompleted = completedTasks.length; const totalTasks = allTasks.length; DOMElements.statsTotalCompleted.textContent = totalCompleted; DOMElements.statsCompletionRate.textContent = totalTasks > 0 ? `${Math.round((totalCompleted / totalTasks) * 100)}%` : 'N/A'; const now = new Date(); const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay())); startOfWeek.setHours(0,0,0,0); const completedThisWeek = completedTasks.filter(t => new Date(t.completedAt) >= startOfWeek).length; DOMElements.statsCompletedThisWeek.textContent = completedThisWeek; const completedByCategory = completedTasks.reduce((acc, task) => { const category = task.category || 'Other'; if (!acc[category]) acc[category] = []; acc[category].push(task); return acc; }, {}); DOMElements.statsCategoryBreakdown.innerHTML = Object.keys(completedByCategory).length > 0 ? Object.entries(completedByCategory).map(([cat, tasks]) => `<div class="mt-2"><h5 class="font-semibold text-sm ${categoryMap[cat].color.split(' ')[1]} flex items-center gap-2">${categoryMap[cat].icon} ${cat}</h5><ul class="space-y-1">${tasks.map(t => { const dueTime = t.endTime ? ` at ${formatTo12Hour(t.endTime)}` : ''; const completedTime = t.completedAt ? ` at ${formatTo12Hour(new Date(t.completedAt).toTimeString())}` : ''; return `<li class="ml-4 text-sm text-gray-600"><span class="font-medium">${t.text}</span><div class="text-xs text-gray-400 pl-2">Due: ${new Date(t.date + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}${dueTime} | Completed: ${new Date(t.completedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}${completedTime}</div></li>`}).join('')}</ul></div>`).join('') : `<p class="text-gray-500 text-sm">No completed tasks yet.</p>`; DOMElements.statsModal.classList.remove('hidden'); }
+        function showFlashMessage(element, message) { element.textContent = message; element.classList.remove('hidden'); setTimeout(() => element.classList.add('hidden'), 3000); }
+        function showIndicator(message, status = "info", showSpinner = false, duration = 500) { DOMElements.indicatorText.textContent = message; DOMElements.appIndicator.className = `fixed bottom-5 left-1/2 -translate-x-1/2 text-white text-sm py-2 px-4 rounded-full shadow-lg flex items-center gap-2 z-50 ${status}`; const spinner = document.getElementById('indicator-spinner'); if (spinner) { spinner.classList.toggle('hidden', !showSpinner); } DOMElements.appIndicator.classList.remove('hidden'); if (!showSpinner) { setTimeout(hideIndicator, duration); } }
+        function hideIndicator() { DOMElements.appIndicator.classList.add('hidden'); }
+        function showNotification(minutes) { if (minutes === 'none') return; DOMElements.notificationText.textContent = `Reminder set for ${minutes} minutes before!`; DOMElements.notificationBanner.classList.remove('hidden'); setTimeout(() => { DOMElements.notificationBanner.classList.add('hidden'); }, 5000); }
+        function styleCategoryFilters() { document.querySelectorAll('.category-filter-btn').forEach(btn => { const category = btn.dataset.category; if (category !== 'All' && !btn.querySelector('svg')) { btn.innerHTML = `${categoryMap[category].icon} ${category}`; } btn.className = 'category-filter-btn text-sm font-medium px-3 py-1 rounded-full flex items-center gap-2'; if (category === currentCategoryFilter) { if (category === 'All') btn.classList.add('bg-indigo-600', 'text-white'); else btn.className += ` ${categoryActiveMap[category]}`; } else { if (category === 'All') btn.classList.add('bg-gray-200', 'text-gray-800'); else btn.className += ` ${categoryMap[category].color}`; } }); }
+        function handleRecurringTask(task) { if(!task.recurrence || task.recurrence === 'none') return; const nextDueDate = new Date(task.date + 'T00:00:00'); if(task.recurrence === 'daily') nextDueDate.setDate(nextDueDate.getDate() + 1); else if (task.recurrence === 'weekly') nextDueDate.setDate(nextDueDate.getDate() + 7); else if (task.recurrence === 'monthly') nextDueDate.setMonth(nextDueDate.getMonth() + 1); const { id, completed, completedAt, ...new_task_data } = task; const newTask = { ...new_task_data, date: nextDueDate.toISOString().split('T')[0], completed: false, completedAt: null, }; crudOperation('add', newTask); crudOperation('update', { id: task.id, recurrence: 'none' }); }
+        function clearUI() { DOMElements.taskListContainer.innerHTML = ''; if (DOMElements.dashboardPendingBreakdown) DOMElements.dashboardPendingBreakdown.innerHTML = ''; if(DOMElements.dashboardNextTask) DOMElements.dashboardNextTask.innerHTML = `<p class="text-gray-400 text-center">No upcoming tasks!</p>`; if(DOMElements.dashboardOverdue) DOMElements.dashboardOverdue.innerHTML = `<p class="text-gray-400 text-center">No overdue tasks!</p>`; if(DOMElements.dashboardOverdueCount) DOMElements.dashboardOverdueCount.textContent = '0'; }
+        function showCalendarTooltip(e) { const dayEl = e.target.closest('.calendar-day:not(.other-month)'); if (!dayEl) return; const day = parseInt(dayEl.dataset.day, 10); const tasks = getFilteredTasks().filter(t => new Date(t.date + 'T00:00:00').getDate() === day && new Date(t.date + 'T00:00:00').getMonth() === currentCalendarDate.getMonth()); if (tasks.length === 0) return; const tooltip = DOMElements.calendarTooltip; tooltip.innerHTML = `<ul class="space-y-1">${tasks.map(t => `<li class="flex items-center gap-2 text-xs"><div class="w-2 h-2 rounded-full ${categoryDotMap[t.category]} flex-shrink-0"></div><span class="${t.completed ? 'completed task-title-completed' : ''}">${t.text}</span></li>`).join('')}</ul>`; const rect = dayEl.getBoundingClientRect(); tooltip.style.left = `${rect.left}px`; tooltip.style.top = `${rect.bottom + 5}px`; tooltip.classList.remove('hidden'); setTimeout(() => tooltip.style.opacity = 1, 10); }
+        function hideCalendarTooltip() { const tooltip = DOMElements.calendarTooltip; tooltip.style.opacity = 0; setTimeout(() => tooltip.classList.add('hidden'), 200); }
+        function handleCalendarDayClick(e) { const dayEl = e.target.closest('.calendar-day:not(.other-month)'); if (!dayEl) return; const dateString = dayEl.dataset.date; const date = new Date(dateString + 'T00:00:00'); const tasks = allTasks.filter(t => t.date === dateString).sort((a, b) => (new Date(`${a.date}T${a.endTime || '23:59:59'}`) - new Date(`${b.date}T${b.endTime || '23:59:59'}`))); 
+            
+            // 🚨 FIX: Update modal title with "Due By"
+            DOMElements.calendarModalTitle.textContent = `Tasks Due By ${date.toLocaleDateString('en-US', { dateStyle: 'full' })}`; 
+            
+            DOMElements.calendarModalTasks.innerHTML = tasks.length ? tasks.map(t => { const taskDateTime = new Date(`${t.date}T${t.endTime || '23:59:59'}`); let urgencyClasses = getTaskUrgencyClasses(t); const editHistoryButton = (t.history && t.history.length > 0) ? `<button class="show-history-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Edit History" data-task-id="${t.id}"><svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></button>` : ''; const hasNotes = t.notes && t.notes.trim() !== ''; const hasSubtasks = t.subtasks && t.subtasks.length > 0; const notesHtml = hasNotes ? `<div class="notes-container pt-4 border-t"><h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Notes</h4><p class="text-sm text-gray-700 whitespace-pre-wrap">${t.notes}</p></div>` : ''; const detailsButton = (hasNotes || hasSubtasks) ? `<button class="details-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Details"><svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>` : ''; return `
+                            <div class="calendar-task-item p-3 ${t.completed ? 'completed opacity-90' : 'bg-white'} flex flex-col gap-2 shadow-sm border border-gray-100 ${urgencyClasses}" data-id="${t.id}" data-datetime="${taskDateTime.toISOString()}">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-start gap-3 flex-grow min-w-0">
+                                        <input type="checkbox" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 flex-shrink-0 mt-1 focus:ring-indigo-500" ${t.completed ? 'checked' : ''} data-id="${t.id}">
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="priority-flag ${priorityFlagMap[t.priority]}"></span>
+                                                <span class="flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-full ${categoryMap[t.category].color}">${categoryMap[t.category].icon} ${t.category}</span>
+                                                <span class="font-medium break-words ${t.completed ? 'task-title-completed text-gray-500' : 'text-gray-800'}">${t.text}</span>
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap pl-8 ${t.completed ? 'completed' : ''}">
+                                                <span>${formatTo12Hour(t.endTime)}</span>
+                                            </div>
                                         </div>
                                     </div>
+                                    <div class="flex items-center flex-shrink-0 ml-2">
+                                        ${editHistoryButton}
+                                        ${detailsButton}
+                                    </div>
                                 </div>
-                                <div class="flex items-center flex-shrink-0 ml-2">
-                                    ${editHistoryButton}
-                                    <button class="details-btn text-gray-500 hover:text-indigo-600 p-1.5 rounded-full hover:bg-gray-100" title="Details"><svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                                <div class="details-container px-4">
+                                    ${notesHtml}
                                 </div>
                             </div>
-                            <div class="details-container px-4">
-                                ${notesHtml}
-                            </div>
-                        </div>
-                    `;
-                }).join('') 
-                : '<p class="text-gray-500">No tasks for this day.</p>'; 
+                        `;
+                    }).join('') : '<p class="text-gray-500">No tasks for this day.</p>'; attachDynamicListeners(DOMElements.calendarModalTasks); DOMElements.calendarDayModal.classList.remove('hidden'); updateDynamicElements(); }
 
-            // Attach listeners for interaction within the modal
-            attachDynamicListeners(DOMElements.calendarModalTasks);
-
-            DOMElements.calendarDayModal.classList.remove('hidden');
-            updateDynamicElements(); // Apply pulsing urgency colors for tasks inside the modal
+        async function handleAddTask(e) { 
+            e.preventDefault(); 
+            const { addTaskText, addTaskDate, addTaskStartTime, addTaskEndTime, addTaskCategory, addTaskPriority, addTaskTags } = DOMElements; 
+            if (addTaskText.value.trim() && addTaskDate.value) { 
+                await crudOperation('add', { 
+                    text: addTaskText.value.trim(), 
+                    date: addTaskDate.value, 
+                    startTime: addTaskStartTime.value, 
+                    endTime: addTaskEndTime.value,     
+                    category: addTaskCategory.value, 
+                    priority: addTaskPriority.value, 
+                    completed: false, 
+                    notes: '', 
+                    subtasks: [], 
+                    completedAt: null, 
+                    tags: parseTags(addTaskTags.value)
+                    // Recurrence and Reminder are now automatically set to none in crudOperation
+                }); 
+                hideAddTaskModal(); 
+            } 
         }
-        // --- END CALENDAR VIEW LOGIC ---
 
-        // --- NEW showHistoryModal function implementation (Updated Layout) ---
+        async function handleEditTask(e) { 
+            e.preventDefault(); 
+            const task = allTasks.find(t => t.id === taskToEditId); 
+            if (task) { 
+                const newTaskData = { 
+                    text: DOMElements.editTaskText.value, 
+                    date: DOMElements.editTaskDate.value, 
+                    startTime: DOMElements.editTaskStartTime.value, 
+                    endTime: DOMElements.editTaskEndTime.value,     
+                    category: DOMElements.editTaskCategory.value, 
+                    priority: DOMElements.editTaskPriority.value, 
+                    notes: DOMElements.editTaskNotes.value, 
+                    tags: parseTags(DOMElements.editTaskTags.value),
+                    recurrence: task.recurrence, 
+                    reminder: task.reminder 
+                };
+
+                await crudOperation('update', { id: task.id, ...task, ...newTaskData }); 
+                hideEditModal(); 
+            } 
+        }
+
+        function attachDynamicListeners(container) { 
+            container.querySelectorAll('li.task-item, .calendar-task-item').forEach(taskItem => {
+                const taskId = taskItem.dataset.id;
+                const task = allTasks.find(t => t.id === taskId);
+                
+                taskItem.querySelector('.task-checkbox')?.addEventListener('change', e => {
+                    const isCompleted = e.target.checked; 
+                    
+                    if (isCompleted && task && task.subtasks && task.subtasks.length > 0 && !task.subtasks.every(s => s.completed)) {
+                        const alertDiv = taskItem.querySelector('.subtask-alert');
+                        if (alertDiv) {
+                            alertDiv.textContent = "Please complete all subtasks first!";
+                            alertDiv.classList.remove('hidden');
+                            taskItem.classList.add('flash-error');
+                            setTimeout(() => {
+                                alertDiv.classList.add('hidden');
+                                taskItem.classList.remove('flash-error');
+                            }, 3000);
+                        }
+                        e.target.checked = false; 
+                        return; 
+                    }
+                    
+                    const updatePayload = { id: taskId, completed: isCompleted, completedAt: isCompleted ? new Date().toISOString() : null }; 
+                    if (isCompleted) { handleRecurringTask(task); } 
+                    crudOperation('update', updatePayload);
+                });
+
+                taskItem.querySelector('.details-btn')?.addEventListener('click', e => {
+                    const details = taskItem.querySelector('.details-container'); 
+                    const icon = e.target.closest('.details-btn').querySelector('svg'); 
+                    details.classList.toggle('open'); 
+                    icon.classList.toggle('rotate-180');
+                });
+                
+                taskItem.querySelector('.edit-btn')?.addEventListener('click', () => showEditModal(taskId));
+                taskItem.querySelector('.delete-btn')?.addEventListener('click', () => {
+                    taskToDeleteId = taskId;
+                    DOMElements.confirmModalContent.classList.remove('max-w-md');
+                    DOMElements.confirmModalContent.classList.add('max-w-sm');
+                    DOMElements.confirmModalText.innerHTML = `Are you sure you want to delete the task: <strong>${allTasks.find(t => t.id === taskId).text}</strong>? This action cannot be undone.`;
+                    DOMElements.confirmDeleteBtn.textContent = 'Delete';
+                    DOMElements.confirmModal.classList.remove('hidden');
+                });
+                taskItem.querySelector('.show-history-btn')?.addEventListener('click', () => showHistoryModal(taskId));
+
+                const notesTextarea = taskItem.querySelector('.task-notes-textarea');
+                if (notesTextarea) {
+                    notesTextarea.addEventListener('input', e => autoResizeTextarea(e.target));
+                    
+                    notesTextarea.addEventListener('blur', e => {
+                        const notesIndicator = document.getElementById(`notes-save-indicator-${taskId}`);
+                        
+                        const currentTask = allTasks.find(t => t.id === taskId);
+                        if (currentTask && currentTask.notes !== e.target.value) {
+                            crudOperation('update', { id: taskId, notes: e.target.value });
+                            
+                            if (notesIndicator) {
+                                notesIndicator.classList.remove('opacity-0');
+                                notesIndicator.classList.add('opacity-100');
+                                setTimeout(() => {
+                                    notesIndicator.classList.remove('opacity-100');
+                                    notesIndicator.classList.add('opacity-0');
+                                }, 2000);
+                            }
+                        }
+                    }, true);
+                }
+                
+                // Subtask Checkbox Listener
+                taskItem.querySelectorAll('.subtask-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', e => {
+                        const subtaskIndex = parseInt(e.target.dataset.subtaskIndex);
+                        handleSubtaskStatusChange(taskId, subtaskIndex, e.target.checked);
+                    });
+                });
+
+                // Subtask Edit Listener
+                taskItem.querySelectorAll('.edit-subtask-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const subtaskIndex = parseInt(button.dataset.subtaskIndex);
+                        handleEditSubtask(taskId, subtaskIndex);
+                    });
+                });
+
+                // Subtask Delete Listener
+                taskItem.querySelectorAll('.delete-subtask-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const subtaskIndex = parseInt(button.dataset.subtaskIndex);
+                        handleDeleteSubtask(taskId, subtaskIndex);
+                    });
+                });
+
+                // Add Subtask button listener
+                taskItem.querySelector('.add-subtask-btn')?.addEventListener('click', e => {
+                    const textInput = taskItem.querySelector('.new-subtask-input');
+                    const dateInput = taskItem.querySelector('.new-subtask-date-input');
+                    const timeInput = taskItem.querySelector('.new-subtask-time-input');
+
+                    if (textInput.value.trim()) {
+                        handleAddSubtask(taskId, textInput.value.trim(), dateInput.value, timeInput.value);
+                        textInput.value = '';
+                        dateInput.value = '';
+                        timeInput.value = '';
+                    }
+                });
+            });
+            // Update time left for Kanban cards
+            document.querySelectorAll('.relative-time-board').forEach(span => {
+                const dateTime = new Date(span.dataset.datetime);
+                const diffMs = dateTime.getTime() - new Date().getTime();
+                let text = '';
+                let isOverdue = diffMs < 0;
+                let absDiff = Math.abs(diffMs);
+
+                if (absDiff < 60000) { 
+                    text = 'Due Now';
+                } else if (absDiff < 3600000) { 
+                    const minutes = Math.round(absDiff / 60000);
+                    text = `${minutes} min`;
+                } else if (absDiff < 86400000) { 
+                    const hours = Math.round(absDiff / 3600000);
+                    text = `${hours} hr`;
+                } else if (absDiff < 604800000) { 
+                    const days = Math.round(absDiff / 86400000);
+                    text = `${days} day`;
+                } else {
+                    return; 
+                }
+
+                if (isOverdue) {
+                    text += ' Overdue';
+                    span.classList.add('text-red-500', 'font-bold');
+                } else {
+                    text += ' Left';
+                    span.classList.add('text-gray-500');
+                }
+                
+                span.textContent = text;
+            });
+        }
+
+        function handleDeleteAllData() { 
+            showIndicator("Deleting all data...", "warning", true); 
+            const deletePromises = allTasks.map(task => deleteDoc(doc(db, "users", auth.currentUser.uid, "tasks", task.id))); 
+            Promise.all(deletePromises) 
+            .then(() => { 
+                DOMElements.lastSavedAction.textContent = 'ALL tasks permanently deleted';
+                showIndicator("All tasks deleted", "success"); 
+            }) 
+            .catch(error => { 
+                console.error("Error deleting all tasks:", error); 
+                showIndicator("Error deleting all data.", "warning", false, 4000); 
+            }); 
+        }
+
+        function handleTodayClick() { renderTodayPanel(); DOMElements.todayPanel.classList.toggle('hidden'); }
+        function renderTodayPanel() { const today = new Date(); const todayStr = today.toISOString().split('T')[0]; today.setDate(today.getDate() + 1); const tomorrowStr = today.toISOString().split('T')[0]; const overdueTasks = allTasks.filter(t => !t.completed && t.date < todayStr); const todayTasks = allTasks.filter(t => !t.completed && t.date === todayStr); const tomorrowTasks = allTasks.filter(t => !t.completed && t.date === tomorrowStr); const renderSection = (title, tasks, color) => { if(tasks.length === 0) return `<div class="p-3"><h4 class="font-semibold text-sm ${color} mb-2">${title}</h4><p class="text-xs text-gray-400">Nothing to show.</p></div>`; return `<div class="p-3"><h4 class="font-semibold text-sm ${color} mb-2">${title}</h4><ul class="space-y-2">${tasks.map(t => `<li class="text-xs text-gray-700 flex items-center gap-2"><span class="priority-flag ${priorityFlagMap[t.priority]}"></span>${t.text}</li>`).join('')}</ul></div>`; }; DOMElements.todayPanelContent.innerHTML = renderSection('Overdue', overdueTasks, 'text-red-500') + renderSection('Today', todayTasks, 'text-indigo-500') + renderSection('Tomorrow', tomorrowTasks, 'text-gray-500'); }
+        function autoResizeTextarea(textarea) { textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px'; }
+        function parseTags(tagsString) { return tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0 && tag.startsWith('#')).map(tag => tag.toLowerCase()); }
+
         function showHistoryModal(taskId) {
             const task = allTasks.find(t => t.id === taskId);
-            const historyContent = DOMElements.historyModalContent;
-            
-            if (!task || !task.history || task.history.length === 0) {
-                 historyContent.innerHTML = '<p class="text-gray-500">No edit history recorded for this task.</p>';
-            } else {
-                // Reverse the array to show most recent changes first
-                const reversedHistory = [...task.history].reverse();
+            if (!task || !task.history || task.history.length === 0) return;
 
-                historyContent.innerHTML = reversedHistory.map((entry, index) => {
-                    const timestamp = new Date(entry.timestamp).toLocaleString();
-                    const changeDetails = entry.changes.map(change => 
-                        `<div class="history-change">
-                            <span class="font-medium text-gray-600">${change.field}</span>
-                            <span>
-                                <span class="history-old">${change.oldValue}</span>
-                                <svg class="w-4 h-4 inline-block text-gray-400 mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                                <span class="history-new">${change.newValue}</span>
-                            </span>
-                        </div>`
-                    ).join('');
-
-                    return `
-                        <div class="history-card ${index > 0 ? 'mt-4' : ''}">
-                            <p class="font-bold text-gray-800">${entry.action || 'Edited'}</p>
-                            <p class="text-xs text-gray-500 mb-4">${timestamp}</p>
-                            <div class="space-y-1">${changeDetails}</div>
+            DOMElements.historyModalContent.innerHTML = task.history.reverse().map(entry => `
+                <div class="history-card">
+                    <p class="text-xs text-gray-500 mb-2">
+                        ${new Date(entry.timestamp).toLocaleDateString('en-US', { dateStyle: 'medium' })} 
+                        at ${new Date(entry.timestamp).toLocaleTimeString('en-US', { timeStyle: 'short' })}
+                        <span class="font-bold text-gray-700 ml-2">${entry.action}</span>
+                    </p>
+                    <div class="space-y-1">
+                        <div class="history-change font-bold text-xs text-gray-500 border-b border-gray-300">
+                            <div class="history-field">Field</div>
+                            <div class="text-center">Old Value</div>
+                            <div class="text-center">New Value</div>
                         </div>
-                    `;
-                }).join('');
-            }
+                        ${entry.changes.map(change => `
+                            <div class="history-change">
+                                <div class="history-field">${change.field}</div>
+                                <div class="history-old">${change.oldValue}</div>
+                                <div class="history-new">${change.newValue}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
 
             DOMElements.historyModal.classList.remove('hidden');
         }
+
+        function getWeekRange(date) {
+            const start = new Date(date);
+            // Get Sunday (0) as the start of the week
+            start.setDate(date.getDate() - date.getDay()); 
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            
+            const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+            const startDay = start.getDate();
+            const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
+            const endDay = end.getDate();
+            const year = end.getFullYear();
+            
+            return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+        }
+
+        function navigateGraphicView(direction) {
+            if (graphicView === 'day') {
+                currentGraphicDate.setDate(currentGraphicDate.getDate() + direction);
+            } else {
+                currentGraphicDate.setDate(currentGraphicDate.getDate() + (7 * direction));
+            }
+            renderGraphicView(getFilteredTasks());
+        }
+
+        function updateDynamicElements() {
+            // Update time left for List view tasks
+            document.querySelectorAll('.relative-time').forEach(span => {
+                const dateTime = new Date(span.dataset.datetime);
+                const diffMs = dateTime.getTime() - new Date().getTime();
+                let text = '';
+                let isOverdue = diffMs < 0;
+                let absDiff = Math.abs(diffMs);
+
+                if (absDiff < 60000) { 
+                    text = 'Due Now';
+                } else if (absDiff < 3600000) { 
+                    const minutes = Math.round(absDiff / 60000);
+                    text = `${minutes} min`;
+                } else if (absDiff < 86400000) { 
+                    const hours = Math.round(absDiff / 3600000);
+                    text = `${hours} hr`;
+                } else if (absDiff < 604800000) { 
+                    const days = Math.round(absDiff / 86400000);
+                    text = `${days} day`;
+                } else {
+                    return; 
+                }
+
+                const taskItem = span.closest('.task-item');
+                // Remove existing pulse classes before re-adding
+                if (taskItem) {
+                    taskItem.classList.remove('pulse-overdue', 'pulse-due-soon');
+                }
+
+                if (isOverdue) {
+                    text += ' Overdue';
+                    span.classList.add('text-red-500', 'font-bold');
+                    span.classList.remove('text-gray-500');
+                    if (taskItem && !taskItem.classList.contains('completed')) {
+                        taskItem.classList.add('pulse-overdue');
+                    }
+                } else if (absDiff < 3600000) { // Due within 1 hour
+                    text += ' Left';
+                    span.classList.add('text-yellow-600', 'font-bold');
+                    span.classList.remove('text-gray-500');
+                    if (taskItem && !taskItem.classList.contains('completed')) {
+                        taskItem.classList.add('pulse-due-soon');
+                    }
+                } else {
+                    text += ' Left';
+                    span.classList.add('text-gray-500');
+                    span.classList.remove('text-red-500', 'font-bold', 'text-yellow-600');
+                }
+                
+                span.textContent = text;
+            });
+            // Update time left for Kanban cards (separate listener loop)
+            document.querySelectorAll('.relative-time-board').forEach(span => {
+                const dateTime = new Date(span.dataset.datetime);
+                const diffMs = dateTime.getTime() - new Date().getTime();
+                let text = '';
+                let isOverdue = diffMs < 0;
+                let absDiff = Math.abs(diffMs);
+
+                const card = span.closest('.kanban-card');
+                if (card) {
+                    card.classList.remove('pulse-overdue', 'pulse-due-soon');
+                }
+
+                if (absDiff < 60000) { 
+                    text = 'Due Now';
+                } else if (absDiff < 3600000) { 
+                    const minutes = Math.round(absDiff / 60000);
+                    text = `${minutes} min`;
+                } else if (absDiff < 86400000) { 
+                    const hours = Math.round(absDiff / 3600000);
+                    text = `${hours} hr`;
+                } else if (absDiff < 604800000) { 
+                    const days = Math.round(absDiff / 86400000);
+                    text = `${days} day`;
+                } else {
+                    return; 
+                }
+
+                if (isOverdue) {
+                    text += ' Overdue';
+                    span.classList.add('text-red-500', 'font-bold');
+                    span.classList.remove('text-gray-500');
+                    if (card && !card.classList.contains('completed')) {
+                        card.classList.add('pulse-overdue');
+                    }
+                } else {
+                    text += ' Left';
+                    span.classList.add('text-gray-500');
+                    span.classList.remove('text-red-500', 'font-bold');
+                    if (absDiff < 3600000 && card && !card.classList.contains('completed')) {
+                        card.classList.add('pulse-due-soon');
+                    }
+                }
+                
+                span.textContent = text;
+            });
+        }
+
 
         function setupEventListeners() { 
             DOMElements.headerStatsBtn.addEventListener('click', calculateAndShowStats); 
             DOMElements.headerAddTaskBtn.addEventListener('click', showAddTaskModal); 
             
-            // Logout confirmation panel toggle
             DOMElements.headerLogoutBtn.addEventListener('click', () => DOMElements.logoutPanel.classList.toggle('hidden'));
             DOMElements.confirmLogoutBtn.addEventListener('click', handleLogout); 
             DOMElements.cancelLogoutBtn.addEventListener('click', () => DOMElements.logoutPanel.classList.add('hidden'));
@@ -663,10 +1575,11 @@
             DOMElements.viewListBtn.addEventListener('click', () => switchView('list')); 
             DOMElements.viewBoardBtn.addEventListener('click', () => switchView('board')); 
             DOMElements.viewCalendarBtn.addEventListener('click', () => switchView('calendar')); 
+            DOMElements.viewGraphicBtn.addEventListener('click', () => switchView('graphic')); 
             
-            // DANGER ZONE CONFIRMATION
             DOMElements.deleteAllDataBtn.addEventListener('click', () => {
-                taskToDeleteId = 'ALL_DATA'; // Special ID for deletion
+                DOMElements.settingsModal.classList.add('hidden'); 
+                taskToDeleteId = 'ALL_DATA'; 
                 DOMElements.confirmModalContent.classList.remove('max-w-sm');
                 DOMElements.confirmModalContent.classList.add('max-w-md');
                 DOMElements.confirmModal.classList.remove('hidden');
@@ -688,26 +1601,31 @@
             DOMElements.cancelEditBtn.addEventListener('click', hideEditModal); 
             DOMElements.editTaskForm.addEventListener('submit', handleEditTask); 
 
-            // History Button Listeners
             DOMElements.editHistoryBtn.addEventListener('click', () => showHistoryModal(taskToEditId));
             DOMElements.historyModalCloseBtn.addEventListener('click', () => DOMElements.historyModal.classList.add('hidden'));
 
             DOMElements.prevMonthBtn.addEventListener('click', () => { 
                 currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1); 
-                renderCalendarView(); 
+                renderCalendarView(getFilteredTasks()); // Pass filtered tasks to refresh
             }); 
             DOMElements.nextMonthBtn.addEventListener('click', () => { 
                 currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1); 
-                renderCalendarView(); 
+                renderCalendarView(getFilteredTasks()); // Pass filtered tasks to refresh
             }); 
             DOMElements.calendarGrid.addEventListener('mouseover', showCalendarTooltip); 
             DOMElements.calendarGrid.addEventListener('mouseout', hideCalendarTooltip); 
             DOMElements.calendarGrid.addEventListener('click', handleCalendarDayClick); 
             
-            // Close the calendar task modal
             DOMElements.calendarModalCloseBtn.addEventListener('click', () => DOMElements.calendarDayModal.classList.add('hidden'));
+            DOMElements.welcomeModalCloseBtn.addEventListener('click', () => DOMElements.welcomeModal.classList.add('hidden'));
 
             DOMElements.statsModalCloseBtn.addEventListener('click', () => DOMElements.statsModal.classList.add('hidden')); 
+            
+            DOMElements.ganttPrevBtn.addEventListener('click', () => navigateGraphicView(-1));
+            DOMElements.ganttNextBtn.addEventListener('click', () => navigateGraphicView(1));
+            DOMElements.ganttViewDayBtn.addEventListener('click', () => setGraphicView('day'));
+            DOMElements.ganttViewWeekBtn.addEventListener('click', () => setGraphicView('week'));
+            
             DOMElements.kanbanBoard.addEventListener('dragstart', e => { 
                 if(e.target.classList.contains('kanban-card')) { 
                     e.dataTransfer.setData('text/plain', e.target.dataset.id); 
@@ -717,6 +1635,7 @@
             DOMElements.kanbanBoard.addEventListener('dragend', e => { 
                 if(e.target.classList.contains('kanban-card')) e.target.classList.remove('dragging'); 
             }); 
+            // Kanban Drag Over/Leave for visual drop feedback
             DOMElements.kanbanBoard.addEventListener('dragover', e => { 
                 e.preventDefault(); 
                 const column = e.target.closest('.kanban-column'); 
@@ -736,8 +1655,8 @@
                     crudOperation('update', {id: taskId, category: newCategory}); 
                 } 
             }); 
+            
             document.addEventListener('click', (e) => { 
-                // Close panels on outside click
                 if (!DOMElements.headerTodayBtn.contains(e.target) && !DOMElements.todayPanel.contains(e.target)) { 
                     DOMElements.todayPanel.classList.add('hidden'); 
                 } 
@@ -747,325 +1666,6 @@
             }); 
         }
 
-        function attachDynamicListeners(container) { 
-            container.querySelectorAll('li.task-item, .calendar-task-item').forEach(taskItem => {
-                const taskId = taskItem.dataset.id;
-                
-                // Toggle Checkbox
-                taskItem.querySelector('.task-checkbox')?.addEventListener('change', e => {
-                    const isCompleted = e.target.checked; 
-                    const task = allTasks.find(t => t.id === taskId);
-                    
-                    if (isCompleted && task && task.subtasks && task.subtasks.length > 0 && !task.subtasks.every(s => s.completed)) {
-                         // Subtask check logic
-                        const alertDiv = taskItem.querySelector('.subtask-alert');
-                        if (alertDiv) {
-                            alertDiv.textContent = "Please complete all subtasks first!";
-                            alertDiv.classList.remove('hidden');
-                            taskItem.classList.add('flash-error');
-                            setTimeout(() => {
-                                alertDiv.classList.add('hidden');
-                                taskItem.classList.remove('flash-error');
-                            }, 3000);
-                        }
-                        e.target.checked = false; 
-                        return; 
-                    }
-                    
-                    const updatePayload = { id: taskId, completed: isCompleted, completedAt: isCompleted ? new Date().toISOString() : null }; 
-                    if (isCompleted) { handleRecurringTask(allTasks.find(t => t.id === taskId)); } 
-                    crudOperation('update', updatePayload);
-                });
-
-                // Details Button (for List View and Calendar Modal)
-                taskItem.querySelector('.details-btn')?.addEventListener('click', e => {
-                    const details = taskItem.querySelector('.details-container'); 
-                    const icon = e.target.closest('.details-btn').querySelector('svg'); 
-                    details.classList.toggle('open'); 
-                    icon.classList.toggle('rotate-180');
-                });
-                
-                // Edit/Delete/History buttons 
-                taskItem.querySelector('.edit-btn')?.addEventListener('click', () => showEditModal(taskId));
-                taskItem.querySelector('.delete-btn')?.addEventListener('click', () => {
-                    taskToDeleteId = taskId;
-                    DOMElements.confirmModalContent.classList.remove('max-w-md');
-                    DOMElements.confirmModalContent.classList.add('max-w-sm');
-                    DOMElements.confirmModalText.innerHTML = `Are you sure you want to delete the task: <strong>${allTasks.find(t => t.id === taskId).text}</strong>? This action cannot be undone.`;
-                    DOMElements.confirmDeleteBtn.textContent = 'Delete';
-                    DOMElements.confirmModal.classList.remove('hidden');
-                });
-                taskItem.querySelector('.show-history-btn')?.addEventListener('click', () => showHistoryModal(taskId));
-
-                // Subtask/Notes logic (only present in List View's full details-container)
-                const notesTextarea = taskItem.querySelector('.task-notes-textarea');
-                if (notesTextarea) {
-                    notesTextarea.addEventListener('input', e => autoResizeTextarea(e.target));
-                    
-                    // --- NOTES SAVE INDICATOR LOGIC ---
-                    notesTextarea.addEventListener('blur', e => {
-                        const notesIndicator = document.getElementById(`notes-save-indicator-${taskId}`);
-                        
-                        // Check if the note has actually changed
-                        const currentTask = allTasks.find(t => t.id === taskId);
-                        if (currentTask && currentTask.notes !== e.target.value) {
-                            crudOperation('update', { id: taskId, notes: e.target.value });
-                            
-                            // Flash the "Saved" indicator
-                            if (notesIndicator) {
-                                notesIndicator.classList.remove('opacity-0');
-                                notesIndicator.classList.add('opacity-100');
-                                setTimeout(() => {
-                                    notesIndicator.classList.remove('opacity-100');
-                                    notesIndicator.classList.add('opacity-0');
-                                }, 2000);
-                            }
-                        }
-                    }, true);
-                    // --- END NOTES SAVE INDICATOR LOGIC ---
-                }
-                
-                // Add subtask logic
-                taskItem.querySelector('.add-subtask-btn')?.addEventListener('click', e => {
-                    const textInput = taskItem.querySelector('.new-subtask-input');
-                    const dateInput = taskItem.querySelector('.new-subtask-date-input');
-                    if (textInput.value.trim()) {
-                        handleAddSubtask(taskId, textInput.value.trim(), dateInput.value);
-                        textInput.value = '';
-                        dateInput.value = '';
-                    }
-                });
-            });
-        }
-        
-        async function handleAddTask(e) { 
-            e.preventDefault(); 
-            const { addTaskText, addTaskDate, addTaskTime, addTaskCategory, addTaskPriority, addTaskTags, addTaskRepeat, addTaskReminder } = DOMElements; 
-            if (addTaskText.value.trim() && addTaskDate.value) { 
-                await crudOperation('add', { 
-                    text: addTaskText.value.trim(), 
-                    date: addTaskDate.value, 
-                    time: addTaskTime.value, 
-                    category: addTaskCategory.value, 
-                    priority: addTaskPriority.value, 
-                    completed: false, 
-                    notes: '', 
-                    subtasks: [], 
-                    completedAt: null, 
-                    tags: parseTags(addTaskTags.value), 
-                    recurrence: addTaskRepeat.value, 
-                    reminder: addTaskReminder.value
-                }); 
-                hideAddTaskModal(); 
-            } 
-        }
-
-        async function handleEditTask(e) { 
-            e.preventDefault(); 
-            const task = allTasks.find(t => t.id === taskToEditId); 
-            if (task) { 
-                // Collect ALL fields being edited
-                const newTaskData = { 
-                    id: taskToEditId, 
-                    text: DOMElements.editTaskText.value, 
-                    date: DOMElements.editTaskDate.value, 
-                    time: DOMElements.editTaskTime.value, 
-                    category: DOMElements.editTaskCategory.value, 
-                    priority: DOMElements.editTaskPriority.value, 
-                    notes: DOMElements.editTaskNotes.value, 
-                    tags: parseTags(DOMElements.editTaskTags.value),
-                    // Keep other fields like recurrence/reminder
-                    recurrence: task.recurrence, 
-                    reminder: task.reminder 
-                };
-
-                // The crudOperation will handle history comparison/logging based on this data
-                await crudOperation('update', { ...task, ...newTaskData }); 
-                hideEditModal(); 
-            } 
-        }
-
-        function showEditModal(taskId) { 
-            taskToEditId = taskId; 
-            const task = allTasks.find(t => t.id === taskId); 
-            if(task) { 
-                DOMElements.editTaskText.value = task.text; 
-                DOMElements.editTaskDate.value = task.date; 
-                DOMElements.editTaskTime.value = task.time || ''; 
-                DOMElements.editTaskCategory.value = task.category; 
-                DOMElements.editTaskPriority.value = task.priority || 'medium'; 
-                DOMElements.editTaskNotes.value = task.notes || ''; 
-                DOMElements.editTaskTags.value = task.tags ? task.tags.join(', ') : ''; 
-                
-                // Conditional display of history button
-                if (task.history && task.history.length > 0) {
-                    DOMElements.editHistoryBtn.classList.remove('hidden');
-                } else {
-                    DOMElements.editHistoryBtn.classList.add('hidden');
-                }
-                
-                DOMElements.editModal.classList.remove('hidden'); 
-            } 
-        }
-        
-        function handleCategoryFilter(e) { const target = e.target.closest('.category-filter-btn'); if (target) { currentCategoryFilter = target.dataset.category; styleCategoryFilters(); refreshDynamicContent(); } }
-        function handleAddSubtask(taskId, text, dueDate) { const task = allTasks.find(t => t.id === taskId); if (task) { const newSubtask = { text, completed: false, completedAt: null, dueDate: dueDate || null }; crudOperation('update', { id: taskId, subtasks: [...(task.subtasks || []), newSubtask] }); } }
-        function handleSubtaskToggle(taskId, subtaskIndex) { const task = allTasks.find(t => t.id === taskId); if (task) { const newSubtasks = task.subtasks.map((sub, i) => { if (i === subtaskIndex) { const isCompleted = !sub.completed; return { ...sub, completed: isCompleted, completedAt: isCompleted ? new Date().toISOString() : null }; } return sub; }); crudOperation('update', { id: taskId, subtasks: newSubtasks }); } }
-        function handleEditSubtask(button) { const { taskId, subtaskIndex } = button.dataset; const task = allTasks.find(t => t.id === taskId); if (!task) return; const oldText = task.subtasks[subtaskIndex].text; const newText = prompt("Edit subtask:", oldText); if (newText && newText.trim() !== oldText) { const newSubtasks = task.subtasks.map((sub, i) => i == subtaskIndex ? { ...sub, text: newText.trim() } : sub); crudOperation('update', { id: taskId, subtasks: newSubtasks }); } }
-        function handleDeleteSubtask(button) { if (!confirm('Are you sure you want to delete this subtask?')) return; const { taskId, subtaskIndex } = button.dataset; const task = allTasks.find(t => t.id === taskId); if (task) { const newSubtasks = task.subtasks.filter((_, i) => i != subtaskIndex); crudOperation('update', { id: taskId, subtasks: newSubtasks }); } }
-        
-        function calculateAndShowStats() { const completedTasks = allTasks.filter(t => t.completed); const totalCompleted = completedTasks.length; const totalTasks = allTasks.length; DOMElements.statsTotalCompleted.textContent = totalCompleted; DOMElements.statsCompletionRate.textContent = totalTasks > 0 ? `${Math.round((totalCompleted / totalTasks) * 100)}%` : 'N/A'; const now = new Date(); const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay())); startOfWeek.setHours(0,0,0,0); const completedThisWeek = completedTasks.filter(t => new Date(t.completedAt) >= startOfWeek).length; DOMElements.statsCompletedThisWeek.textContent = completedThisWeek; const completedByCategory = completedTasks.reduce((acc, task) => { const category = task.category || 'Other'; if (!acc[category]) acc[category] = []; acc[category].push(task); return acc; }, {}); DOMElements.statsCategoryBreakdown.innerHTML = Object.keys(completedByCategory).length > 0 ? Object.entries(completedByCategory).map(([cat, tasks]) => `<div class="mt-2"><h5 class="font-semibold text-sm ${categoryMap[cat].color.split(' ')[1]} flex items-center gap-2">${categoryMap[cat].icon} ${cat}</h5><ul class="space-y-1">${tasks.map(t => { const dueTime = t.time ? ` at ${formatTo12Hour(t.time)}` : ''; const completedTime = t.completedAt ? ` at ${formatTo12Hour(new Date(t.completedAt).toTimeString())}` : ''; return `<li class="ml-4 text-sm text-gray-600"><span class="font-medium">${t.text}</span><div class="text-xs text-gray-400 pl-2">Due: ${new Date(t.date + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}${dueTime} | Completed: ${new Date(t.completedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}${completedTime}</div></li>`}).join('')}</ul></div>`).join('') : `<p class="text-gray-500 text-sm">No completed tasks yet.</p>`; DOMElements.statsModal.classList.remove('hidden'); }
-        
-        function handleLogout() { 
-            DOMElements.logoutPanel.classList.add('hidden'); // Hide the confirmation panel
-            showIndicator("Logging out...", "info", true); 
-            signOut(auth).then(() => { 
-                hideIndicator(); 
-                DOMElements.loginForm.reset(); 
-                showFlashMessage(DOMElements.logoutSuccessMessage, "Successfully logged out!"); 
-            }); 
-        }
-
-        function handleTodayClick() { renderTodayPanel(); DOMElements.todayPanel.classList.toggle('hidden'); }
-        function renderTodayPanel() { const today = new Date(); const todayStr = today.toISOString().split('T')[0]; today.setDate(today.getDate() + 1); const tomorrowStr = today.toISOString().split('T')[0]; const overdueTasks = allTasks.filter(t => !t.completed && t.date < todayStr); const todayTasks = allTasks.filter(t => !t.completed && t.date === todayStr); const tomorrowTasks = allTasks.filter(t => !t.completed && t.date === tomorrowStr); const renderSection = (title, tasks, color) => { if(tasks.length === 0) return `<div class="p-3"><h4 class="font-semibold text-sm ${color} mb-2">${title}</h4><p class="text-xs text-gray-400">Nothing to show.</p></div>`; return `<div class="p-3"><h4 class="font-semibold text-sm ${color} mb-2">${title}</h4><ul class="space-y-2">${tasks.map(t => `<li class="text-xs text-gray-700 flex items-center gap-2"><span class="priority-flag ${priorityFlagMap[t.priority]}"></span>${t.text}</li>`).join('')}</ul></div>`; }; DOMElements.todayPanelContent.innerHTML = renderSection('Overdue', overdueTasks, 'text-red-500') + renderSection('Today', todayTasks, 'text-indigo-500') + renderSection('Tomorrow', tomorrowTasks, 'text-gray-500'); }
-        
-        // REFACTORED: Now uses the general confirmation modal
-        function handleDeleteAllData() { 
-            showIndicator("Deleting all data...", "warning", true); 
-            const deletePromises = allTasks.map(task => deleteDoc(doc(db, "users", auth.currentUser.uid, "tasks", task.id))); 
-            Promise.all(deletePromises) 
-            .then(() => { 
-                DOMElements.lastSavedAction.textContent = 'ALL tasks permanently deleted';
-                showIndicator("All tasks deleted", "success"); 
-            }) 
-            .catch(error => { 
-                console.error("Error deleting all tasks:", error); 
-                showIndicator("Error deleting all data.", "warning", false, 4000); 
-            }); 
-        }
-
-        function showCalendarTooltip(e) { const dayEl = e.target.closest('.calendar-day:not(.other-month)'); if (!dayEl) return; const day = parseInt(dayEl.dataset.day, 10); const tasks = getFilteredTasks().filter(t => new Date(t.date + 'T00:00:00').getDate() === day && new Date(t.date + 'T00:00:00').getMonth() === currentCalendarDate.getMonth()); if (tasks.length === 0) return; const tooltip = DOMElements.calendarTooltip; tooltip.innerHTML = `<ul class="space-y-1">${tasks.map(t => `<li class="flex items-center gap-2 text-xs"><div class="w-2 h-2 rounded-full ${categoryDotMap[t.category]} flex-shrink-0"></div><span class="${t.completed ? 'completed task-title-completed' : ''}">${t.text}</span></li>`).join('')}</ul>`; const rect = dayEl.getBoundingClientRect(); tooltip.style.left = `${rect.left}px`; tooltip.style.top = `${rect.bottom + 5}px`; tooltip.classList.remove('hidden'); setTimeout(() => tooltip.style.opacity = 1, 10); }
-        function hideCalendarTooltip() { const tooltip = DOMElements.calendarTooltip; tooltip.style.opacity = 0; setTimeout(() => tooltip.classList.add('hidden'), 200); }
-        function getRelativeDateGroup(dateString) { const today = new Date(); today.setHours(0,0,0,0); const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1); const taskDate = new Date(dateString + 'T00:00:00'); if (taskDate < today) return "Overdue"; if (taskDate.getTime() === today.getTime()) return "Today"; if (taskDate.getTime() === tomorrow.getTime()) return "Tomorrow"; return taskDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric'}); }
-        function switchView(view) { 
-            currentView = view; 
-            const views = { list: DOMElements.listViewContainer, board: DOMElements.kanbanViewContainer, calendar: DOMElements.calendarViewContainer }; 
-            const buttons = { list: DOMElements.viewListBtn, board: DOMElements.viewBoardBtn, calendar: DOMElements.viewCalendarBtn }; 
-            for (const v in views) { 
-                views[v].classList.toggle('hidden', v !== view); 
-                buttons[v].classList.toggle('bg-indigo-600', v === view); 
-                buttons[v].classList.toggle('text-white', v === view); 
-            } 
-            DOMElements.categoryFilters.classList.toggle('hidden', view === 'calendar'); 
-            DOMElements.searchInput.placeholder = view === 'board' ? 'Filter board...' : 'Search tasks or #tags...'; 
-            
-            // Hide the details modal when switching out of calendar view
-            DOMElements.calendarDayModal.classList.add('hidden');
-            
-            refreshDynamicContent(); 
-        }
-        function showAddTaskModal() { DOMElements.addTaskForm.reset(); setSmartDefaults(); DOMElements.addTaskModal.classList.remove('hidden'); DOMElements.addTaskText.focus(); }
-        function hideAddTaskModal() { DOMElements.addTaskModal.classList.add('hidden'); }
-        function hideEditModal() { DOMElements.editModal.classList.add('hidden'); taskToEditId = null; }
-        function showConfirmModal(taskId) { taskToDeleteId = taskId; DOMElements.confirmModal.classList.remove('hidden'); }
-        function hideConfirmModal() { 
-            taskToDeleteId = null; 
-            DOMElements.confirmModal.classList.add('hidden'); 
-            DOMElements.confirmDeleteBtn.textContent = 'Delete'; // Reset button text
-            DOMElements.confirmModalContent.classList.remove('max-w-md'); // Reset modal size
-            DOMElements.confirmModalContent.classList.add('max-w-sm'); 
-            DOMElements.confirmModalText.innerHTML = 'This action cannot be undone.'; // Reset text
-        }
-        function getGreeting() { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 18) return 'Good afternoon'; return 'Good evening'; }
-        function getInitials(email) { if (!email) return '?'; const p = email.split('@')[0].split(/[._-]/); return p.length > 1 ? (p[0][0] + p[1][0]) : email[0]; }
-        function formatTo12Hour(timeString) { if (!timeString) return ''; const date = new Date(); const [hour, minute] = timeString.split(':'); date.setHours(hour, minute); return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); }
-        
-        function updateDynamicElements() { 
-            const now = new Date();
-            
-            // 1. Update urgency for List View tasks and Calendar Modal tasks
-            document.querySelectorAll('.task-item:not(.completed), .calendar-task-item:not(.completed)').forEach(el => { 
-                const isoDate = el.dataset.datetime; 
-                if (isoDate) { 
-                    const taskDateTime = new Date(isoDate); 
-                    const diffHours = (taskDateTime.getTime() - now.getTime()) / 3600000; 
-                    el.classList.remove('pulse-overdue', 'pulse-due-soon'); 
-                    if (diffHours < 0) { 
-                        el.classList.add('pulse-overdue'); 
-                    } else if (diffHours <= 1 && diffHours >= 0) {
-                        el.classList.add('pulse-due-soon'); 
-                    } 
-                } 
-            }); 
-            
-            // 2. Update urgency for Calendar Day Boxes
-            document.querySelectorAll('.calendar-day:not(.other-month)').forEach(dayEl => {
-                const dateString = dayEl.dataset.date;
-                if (!dateString) return;
-
-                const tasksOnDay = allTasks.filter(t => t.date === dateString && !t.completed);
-                
-                // Remove previous pulse classes to prevent stacking animation
-                dayEl.classList.remove('pulse-overdue', 'pulse-due-soon'); 
-
-                const overdueTask = tasksOnDay.some(t => new Date(`${t.date}T${t.time || '23:59:59'}`) < now);
-                const dueSoonTask = tasksOnDay.some(t => {
-                    const taskDateTime = new Date(`${t.date}T${t.time || '23:59:59'}`);
-                    const diffHours = (taskDateTime.getTime() - now.getTime()) / 3600000;
-                    return diffHours > 0 && diffHours <= 1;
-                });
-                
-                if (overdueTask) {
-                    dayEl.classList.add('pulse-overdue');
-                } else if (dueSoonTask) {
-                    dayEl.classList.add('pulse-due-soon');
-                }
-            });
-
-            // 3. Update relative times everywhere
-            document.querySelectorAll('.relative-time').forEach(el => { 
-                const isoDate = el.dataset.datetime; 
-                if (isoDate) { 
-                    el.textContent = formatTimeDifference(isoDate); 
-                    const diffHours = (new Date(isoDate).getTime() - new Date().getTime()) / 3600000; 
-                    el.classList.remove('text-red-600', 'text-yellow-600'); 
-                    if (diffHours < 0) { 
-                        el.classList.add('text-red-600'); 
-                    } else if (diffHours <= 1) { 
-                        el.classList.add('text-yellow-600'); 
-                    } 
-                } 
-            }); 
-        }
-
-        function formatTimeDifference(isoDate) { const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' }); const diffSeconds = (new Date(isoDate).getTime() - Date.now()) / 1000; const diffDays = diffSeconds / 86400; if (Math.abs(diffDays) >= 1) return rtf.format(Math.round(diffDays), 'day'); const diffHours = diffSeconds / 3600; if (Math.abs(diffHours) >= 1) return rtf.format(Math.round(diffHours), 'hour'); const diffMinutes = diffSeconds / 60; if (Math.abs(diffMinutes) >= 1) return rtf.format(Math.round(diffMinutes), 'minute'); return 'just now'; }
-        function showFlashMessage(element, message) { element.textContent = message; element.classList.remove('hidden'); setTimeout(() => element.classList.add('hidden'), 3000); }
-        function clearUI() { DOMElements.taskListContainer.innerHTML = ''; if (DOMElements.dashboardPendingBreakdown) DOMElements.dashboardPendingBreakdown.innerHTML = ''; if(DOMElements.dashboardNextTask) DOMElements.dashboardNextTask.innerHTML = `<p class="text-gray-400 text-center">No upcoming tasks!</p>`; if(DOMElements.dashboardOverdue) DOMElements.dashboardOverdue.innerHTML = `<p class="text-gray-400 text-center">No overdue tasks!</p>`; if(DOMElements.dashboardOverdueCount) DOMElements.dashboardOverdueCount.textContent = '0'; }
-        function setSmartDefaults() { DOMElements.addTaskDate.value = new Date().toISOString().split('T')[0]; const now = new Date(); DOMElements.addTaskTime.value = `${String((now.getHours() + 1) % 24).padStart(2, '0')}:00`; }
-        
-        function showIndicator(message, status = "info", showSpinner = false, duration = 500) { 
-            DOMElements.indicatorText.textContent = message; 
-            DOMElements.appIndicator.className = `fixed bottom-5 left-1/2 -translate-x-1/2 text-white text-sm py-2 px-4 rounded-full shadow-lg flex items-center gap-2 z-50 ${status}`;
-            
-            const spinner = document.getElementById('indicator-spinner');
-            if (spinner) {
-                spinner.classList.toggle('hidden', !showSpinner);
-            }
-            
-            DOMElements.appIndicator.classList.remove('hidden'); 
-
-            if (!showSpinner) {
-                setTimeout(hideIndicator, duration);
-            }
-        }
-        
-        function hideIndicator() { DOMElements.appIndicator.classList.add('hidden'); }
-        
-        function styleCategoryFilters() { document.querySelectorAll('.category-filter-btn').forEach(btn => { const category = btn.dataset.category; if (category !== 'All' && !btn.querySelector('svg')) { btn.innerHTML = `${categoryMap[category].icon} ${category}`; } btn.className = 'category-filter-btn text-sm font-medium px-3 py-1 rounded-full flex items-center gap-2'; if (category === currentCategoryFilter) { if (category === 'All') btn.classList.add('bg-indigo-600', 'text-white'); else btn.className += ` ${categoryActiveMap[category]}`; } else { if (category === 'All') btn.classList.add('bg-gray-200', 'text-gray-800'); else btn.className += ` ${categoryMap[category].color}`; } }); }
-        function parseTags(tagsString) { return tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0 && tag.startsWith('#')).map(tag => tag.toLowerCase()); }
-        function handleRecurringTask(task) { if(!task.recurrence || task.recurrence === 'none') return; const nextDueDate = new Date(task.date + 'T00:00:00'); if(task.recurrence === 'daily') nextDueDate.setDate(nextDueDate.getDate() + 1); else if (task.recurrence === 'weekly') nextDueDate.setDate(nextDueDate.getDate() + 7); else if (task.recurrence === 'monthly') nextDueDate.setMonth(nextDueDate.getMonth() + 1); const { id, completed, completedAt, ...new_task_data } = task; const newTask = { ...new_task_data, date: nextDueDate.toISOString().split('T')[0], completed: false, completedAt: null, }; crudOperation('add', newTask); crudOperation('update', { id: task.id, recurrence: 'none' }); }
-        function autoResizeTextarea(textarea) { textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px'; }
-        
         DOMElements.loginForm.addEventListener('submit', async (e) => { 
             e.preventDefault(); 
             DOMElements.authError.textContent = ''; 
@@ -1074,16 +1674,18 @@
             const password = e.target.elements['login-password'].value; 
             try { 
                 await signInWithEmailAndPassword(auth, email, password); 
-                sessionStorage.setItem('loginJustOccurred', 'true'); 
+                sessionStorage.setItem('loginJustOccurred', 'true'); // Set flag before redirection/loading
                 hideIndicator();
             } catch (error) { 
-                DOMElements.authError.textContent = 'Incorrect email or password.'; 
+                console.error("Login Error:", error.code, error.message); 
+                DOMElements.authError.textContent = 'Incorrect email or password, or a connection error occurred. Check console for details.'; 
                 hideIndicator(); 
             } 
         });
         
         setupEventListeners();
         styleCategoryFilters();
+        setGraphicView(graphicView);
     </script>
 </body>
 </html>
